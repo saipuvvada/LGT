@@ -1,0 +1,29 @@
+{
+  "short_name": "AgroDeals",
+  "name": "AgroDeals – Premium Farm Inputs",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#1a3a2a",
+  "theme_color": "#2d7a4f",
+  "display": "standalone",
+  "orientation": "portrait"
+}
