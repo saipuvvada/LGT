@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from './context/CartContext'
 import { supabase } from './lib/supabase'
 import BottomNav from './components/BottomNav'
+import Footer from './components/Footer'
 
 const categories = [
   { id: 'pesticides', label: 'Pesticides', emoji: '🧴', path: '/category/pesticides' },
@@ -487,6 +488,8 @@ export default function App() {
         )}
 
       </main>
+
+      <Footer />
 
       <BottomNav />
 
