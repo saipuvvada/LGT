@@ -105,29 +105,79 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError
 
-      // 4. Success! Clear cart and redirect to success page
+      // 4. Fire invoice email to saipuvvada12@gmail.com via FormSubmit
+      const invoiceNo = `INV-${order.id.substring(0, 8).toUpperCase()}`
+      const itemLines = itemsWithGst.map((item, i) =>
+        `${i + 1}. ${item.name} (${item.quantity_vol || ''}) x${item.quantity} @ ₹${item.price.toFixed(2)} + GST ₹${item.gstAmount.toFixed(2)} = ₹${(item.price * item.quantity + item.gstAmount).toFixed(2)}`
+      ).join('\n')
+
+      const emailBody =
+        `📦 NEW ORDER RECEIVED — ${invoiceNo}\n` +
+        `══════════════════════════════════\n\n` +
+        `👤 Customer: ${formData.fullName}\n` +
+        `📞 Phone:    +91 ${formData.phone}\n` +
+        `📍 Address:  ${formData.address}, ${formData.city} - ${formData.pincode}\n` +
+        `💳 Payment:  Cash on Delivery (COD)\n` +
+        `🔖 Transaction ID: ${transactionId}\n\n` +
+        `─── ORDER ITEMS ───────────────────\n` +
+        `${itemLines}\n\n` +
+        `─── TOTALS ────────────────────────\n` +
+        `Subtotal (excl. GST): ₹${subtotal.toFixed(2)}\n` +
+        `CGST:                 ₹${cgst.toFixed(2)}\n` +
+        `SGST:                 ₹${sgst.toFixed(2)}\n` +
+        `Grand Total (COD):    ₹${grandTotal.toFixed(2)}\n\n` +
+        `══════════════════════════════════\n` +
+        `Lakshmi Ganapathi Traders — AgroDeals\n` +
+        `GST: 37ANKPD0775A1ZC | Karempudi, AP`
+
+      let emailSent = false
+      try {
+        const res = await fetch('https://formsubmit.co/ajax/saipuvvada12@gmail.com', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            _subject:      `🛒 New Order ${invoiceNo} — ₹${grandTotal.toFixed(2)} COD`,
+            Invoice_No:    invoiceNo,
+            Customer_Name: formData.fullName,
+            Phone:         `+91 ${formData.phone}`,
+            Address:       `${formData.address}, ${formData.city} - ${formData.pincode}`,
+            Payment:       'Cash on Delivery (COD)',
+            Transaction_ID: transactionId,
+            Order_Items:   itemLines,
+            Subtotal:      `₹${subtotal.toFixed(2)}`,
+            CGST:          `₹${cgst.toFixed(2)}`,
+            SGST:          `₹${sgst.toFixed(2)}`,
+            Grand_Total:   `₹${grandTotal.toFixed(2)}`,
+            Full_Details:  emailBody,
+            _honey:        '',
+            _template:     'box',
+          })
+        })
+        const data = await res.json()
+        if (res.ok && data.success === 'true') emailSent = true
+      } catch (emailErr) {
+        console.warn('Invoice email dispatch failed (non-blocking):', emailErr)
+      }
+
+      // 5. Clear cart and navigate to success
       clearCart()
-      navigate('/order-success', { 
-        state: { 
-          orderId: order.id, 
+      navigate('/order-success', {
+        state: {
+          orderId: order.id,
           customerDetails: formData,
           items: itemsWithGst,
-          totals: {
-            subtotal,
-            cgst,
-            sgst,
-            totalGst,
-            grandTotal
-          }
-        } 
+          totals: { subtotal, cgst, sgst, totalGst, grandTotal },
+          emailSent,
+        }
       })
 
     } catch (error) {
       console.error(error)
-      alert("Error placing order: " + error.message)
+      alert('Error placing order: ' + error.message)
       setLoading(false)
     }
   }
+
 
   if (cartItems.length === 0) {
     return (

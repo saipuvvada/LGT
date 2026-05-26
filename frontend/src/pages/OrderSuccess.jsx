@@ -27,7 +27,7 @@ export default function OrderSuccess() {
     )
   }
 
-  const { orderId, customerDetails, items, totals } = state
+  const { orderId, customerDetails, items, totals, emailSent } = state
   const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   const downloadInvoice = () => {
@@ -58,11 +58,56 @@ export default function OrderSuccess() {
       <main className="page-content" style={{ paddingTop: 20, padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
         <h2 style={{ color: '#2d7a4f', marginBottom: 8 }}>Order Successful!</h2>
-        <p style={{ color: '#666', textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ 
+          background: '#f0faf4', 
+          border: '1.5px solid #a7f3d0', 
+          borderRadius: '10px', 
+          padding: '12px 20px', 
+          marginBottom: '20px', 
+          textAlign: 'center',
+          fontSize: '14px',
+          color: 'var(--text-dark)'
+        }}>
+          🧾 Invoice No: <strong style={{ color: 'var(--green-primary)', fontFamily: 'monospace', fontSize: '15px' }}>INV-{orderId.substring(0, 8).toUpperCase()}</strong>
+        </div>
+        <p style={{ color: '#666', textAlign: 'center', marginBottom: 16, maxWidth: '400px', lineHeight: '1.5' }}>
           Thank you for shopping with Lakshmi Ganapathi Traders. Your order will be delivered soon via Cash on Delivery.
         </p>
 
-        <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 400 }}>
+        {/* Email dispatch status */}
+        {emailSent ? (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            background: '#f0faf4', border: '1.5px solid #a7f3d0',
+            borderRadius: '10px', padding: '12px 16px',
+            marginBottom: '20px', maxWidth: '420px', width: '100%', fontSize: '13px'
+          }}>
+            <span style={{ fontSize: '20px', flexShrink: 0 }}>✅</span>
+            <div>
+              <strong style={{ color: '#065f46' }}>Invoice emailed to the store!</strong>
+              <div style={{ color: '#047857', marginTop: '3px', lineHeight: 1.5 }}>
+                A copy of your order has been automatically sent to <strong>saipuvvada12@gmail.com</strong>. We'll reach out for delivery coordination shortly.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            background: '#fffbeb', border: '1.5px solid #fcd34d',
+            borderRadius: '10px', padding: '12px 16px',
+            marginBottom: '20px', maxWidth: '420px', width: '100%', fontSize: '13px'
+          }}>
+            <span style={{ fontSize: '20px', flexShrink: 0 }}>📧</span>
+            <div>
+              <strong style={{ color: '#92400e' }}>Please email your invoice to the store</strong>
+              <div style={{ color: '#78350f', marginTop: '3px', lineHeight: 1.5 }}>
+                Download your invoice below and email it to <strong>saipuvvada12@gmail.com</strong> to confirm your order for delivery.
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 420 }}>
           <button className="btn-shop-now" style={{ flex: 1, background: '#fff', color: '#2d7a4f', border: '1px solid #2d7a4f' }} onClick={() => navigate('/')}>
             Continue Shopping
           </button>

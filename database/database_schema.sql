@@ -107,3 +107,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- 6. Support Tickets Table
+CREATE TABLE support_tickets (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+
+-- Allow public submissions (any user can file a ticket)
+CREATE POLICY "Anyone can submit support tickets" ON support_tickets FOR INSERT WITH CHECK (true);
+
+-- Allow authenticated admins to view tickets
+CREATE POLICY "Authenticated users can view support tickets" ON support_tickets FOR SELECT USING (auth.role() = 'authenticated');
+

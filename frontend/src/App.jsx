@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from './context/CartContext'
 import { supabase } from './lib/supabase'
+import BottomNav from './components/BottomNav'
 
 const categories = [
   { id: 'pesticides', label: 'Pesticides', emoji: '🧴', path: '/category/pesticides' },
@@ -79,23 +80,55 @@ function UserMenu({ navigate, user }) {
 
   const menuItems = user ? [
     { icon: '🛡️', label: 'Admin Panel', action: () => navigate('/admin') },
-    { icon: '📦', label: 'My Orders', action: () => alert('Orders page coming soon!') },
-    { icon: '🎧', label: 'Support', action: () => alert('Support: support@agrodeals.in') },
-    { icon: 'ℹ️', label: 'About Us', action: () => alert('AGRODEALS – Your trusted agri input store.') },
+    { icon: '📦', label: 'My Orders', action: () => navigate('/orders') },
+    { icon: '🎧', label: 'Support', action: () => navigate('/support') },
+    { icon: 'ℹ️', label: 'About Us', action: () => navigate('/about') },
     { icon: '🚪', label: 'Sign Out', action: handleSignOut },
   ] : [
     { icon: '🔑', label: 'Login / Register', action: () => navigate('/login') },
     { icon: '🛡️', label: 'Admin Panel', action: () => navigate('/admin') },
-    { icon: '🎧', label: 'Support', action: () => alert('Support: support@agrodeals.in') },
-    { icon: '📦', label: 'My Orders', action: () => alert('Orders page coming soon!') },
-    { icon: 'ℹ️', label: 'About Us', action: () => alert('AGRODEALS – Your trusted agri input store.') },
+    { icon: '🎧', label: 'Support', action: () => navigate('/support') },
+    { icon: '📦', label: 'My Orders', action: () => navigate('/orders') },
+    { icon: 'ℹ️', label: 'About Us', action: () => navigate('/about') },
   ]
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button className="cart-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)} style={{ fontSize: 22, letterSpacing: 1 }}>
-        {user ? '👤' : '⋮'}
+      <button
+        className="cart-btn"
+        aria-label="Menu"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          color: 'white',
+          padding: '5px 8px',
+          borderRadius: '20px',
+          background: open ? 'rgba(255,255,255,0.15)' : 'transparent',
+          transition: 'background 0.2s',
+        }}
+      >
+        {/* Person icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+        {/* Chevron arrow */}
+        <svg
+          width="12" height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+        >
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
       </button>
+
       {open && (
         <div className="user-menu-dropdown">
           {user && (
@@ -455,24 +488,7 @@ export default function App() {
 
       </main>
 
-      <nav className="bottom-nav">
-        <Link to="/" className="nav-item active">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-          Shop
-        </Link>
-        <div className="nav-item">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          My Farm
-        </div>
-        <div className="nav-item">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Consult
-        </div>
-        <Link to="/cart" className="nav-item">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          Bag {cartItemCount > 0 && `(${cartItemCount})`}
-        </Link>
-      </nav>
+      <BottomNav />
 
       <Toast message={toast.msg} visible={toast.visible} />
 
