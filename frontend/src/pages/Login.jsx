@@ -8,16 +8,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
 
-  // If user is already logged in or logs in, redirect to home
+  // If user is already logged in, redirect to home
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Login - Initial Auth Session:', session)
       if (session) navigate('/')
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Login - Auth State Change event:', _event, 'Session:', session)
-      if (session) {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only redirect on an actual sign-in, not on INITIAL_SESSION
+      if (event === 'SIGNED_IN' && session) {
         navigate('/')
       }
     })
@@ -31,7 +30,11 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: window.location.origin,
+        queryParams: {
+          prompt: 'select_account',   // always show Google account picker
+          access_type: 'offline',
+        }
       }
     })
     if (error) {

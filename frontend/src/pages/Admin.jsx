@@ -14,6 +14,9 @@ function Admin() {
   const [price, setPrice] = useState('')
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [hsnCode, setHsnCode] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [gstRate, setGstRate] = useState('18')
   const [imageFile, setImageFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
@@ -103,7 +106,10 @@ function Admin() {
           price: parseFloat(price),
           description,
           category_id: categoryId || null,
-          image_url
+          image_url,
+          hsn_code: hsnCode || null,
+          quantity: quantity || null,
+          gst_rate: gstRate ? parseInt(gstRate) : 18
         }
       ])
 
@@ -118,6 +124,9 @@ function Admin() {
       setPrice('')
       setDescription('')
       setCategoryId('')
+      setHsnCode('')
+      setQuantity('')
+      setGstRate('18')
       setImageFile(null)
       e.target.reset()
       fetchProducts()
@@ -314,6 +323,42 @@ function Admin() {
             </div>
           </div>
 
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>HSN Code</label>
+              <input
+                type="text"
+                value={hsnCode}
+                onChange={(e) => setHsnCode(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+                placeholder="e.g. 38089190"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Product Quantity (Size / Volume)</label>
+              <input
+                type="text"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+                placeholder="e.g. 250 ML, 1 L, 1 KG"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>GST Rate (%)</label>
+              <select
+                value={gstRate}
+                onChange={(e) => setGstRate(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+              >
+                <option value="18">18%</option>
+                <option value="12">12%</option>
+                <option value="5">5%</option>
+                <option value="0">0%</option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Product Image</label>
             <input
@@ -377,6 +422,31 @@ function Admin() {
               </div>
               <h3 style={{ margin: '0 0 8px', fontSize: '16px', lineHeight: '1.4' }}>{product.name}</h3>
               <p style={{ margin: '0 0 12px', fontWeight: 'bold', fontSize: '18px' }}>₹{product.price}</p>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '8px',
+                padding: '8px 0',
+                margin: '0 0 16px',
+                borderTop: '1px solid #f0f0f0',
+                borderBottom: '1px solid #f0f0f0',
+                fontSize: '12px',
+                color: '#555'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#888', marginBottom: '2px' }}>QTY</div>
+                  <strong>{product.quantity || 'N/A'}</strong>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid #eee', borderRight: '1px solid #eee' }}>
+                  <div style={{ color: '#888', marginBottom: '2px' }}>HSN</div>
+                  <strong>{product.hsn_code || 'N/A'}</strong>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#888', marginBottom: '2px' }}>GST</div>
+                  <strong>{product.gst_rate ?? 18}%</strong>
+                </div>
+              </div>
               
               <button
                 onClick={() => archiveProduct(product.id)}

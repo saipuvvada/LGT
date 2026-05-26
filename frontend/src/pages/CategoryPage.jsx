@@ -18,6 +18,7 @@ export default function CategoryPage() {
   
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const meta = categoryMeta[slug] || { label: slug, emoji: '🛒', desc: '' }
   const cartItemCount = cartItems.reduce((n, i) => n + i.quantity, 0)
@@ -59,12 +60,19 @@ export default function CategoryPage() {
   }
 
   const sortedProducts = useMemo(() => {
-    const arr = [...products]
+    let arr = [...products]
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      arr = arr.filter(p =>
+        p.name?.toLowerCase().includes(q) ||
+        p.brand?.toLowerCase().includes(q)
+      )
+    }
     if (sort === 'price-asc') arr.sort((a, b) => a.price - b.price)
     else if (sort === 'price-desc') arr.sort((a, b) => b.price - a.price)
     else if (sort === 'discount') arr.sort((a, b) => (b.originalPrice - b.price) - (a.originalPrice - a.price))
     return arr
-  }, [products, sort])
+  }, [products, sort, searchQuery])
 
   const showToast = (name) => {
     setToast({ msg: `${name} added to cart!`, visible: true })
@@ -94,7 +102,11 @@ export default function CategoryPage() {
         </div>
         <div className="search-bar">
           <span className="search-icon">🔍</span>
-          <input placeholder={`Search in ${meta.label}...`} />
+          <input
+            placeholder={`Search in ${meta.label}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </header>
 
@@ -164,6 +176,11 @@ export default function CategoryPage() {
                     </div>
                     <div className="product-brand">{product.brand || product.categories?.name || 'AgroDeals'}</div>
                     <div className="product-name">{product.name}</div>
+                    {product.quantity && (
+                      <div style={{ fontSize: '12px', color: 'var(--text-light)', marginBottom: '8px', fontWeight: '500' }}>
+                        🧪 Size: <strong>{product.quantity}</strong>
+                      </div>
+                    )}
                     <div className="product-prices">
                       <span className="price-original">₹{product.originalPrice}</span>
                       <span className="price-sale">₹{product.price}</span>

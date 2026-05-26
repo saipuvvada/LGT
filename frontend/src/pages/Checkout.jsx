@@ -16,10 +16,18 @@ export default function Checkout() {
     pincode: ''
   })
 
-  // Tax calculation
-  const totalAmount = Math.round(cartTotal)
-  const gstAmount = Math.round(totalAmount * 0.18) // Assuming 18% GST overall
-  const grandTotal = totalAmount + gstAmount
+  // Per-item GST calculation using each product's gst_rate field
+  const itemsWithGst = cartItems.map(item => {
+    const rate = item.gst_rate ?? 18  // fallback to 18% if not set
+    const basePrice = item.price * item.quantity
+    const gstAmt = parseFloat((basePrice * rate / 100).toFixed(2))
+    return { ...item, gstRate: rate, gstAmount: gstAmt, baseAmount: basePrice }
+  })
+  const subtotal = parseFloat(cartItems.reduce((s, i) => s + i.price * i.quantity, 0).toFixed(2))
+  const totalGst = parseFloat(itemsWithGst.reduce((s, i) => s + i.gstAmount, 0).toFixed(2))
+  const cgst = parseFloat((totalGst / 2).toFixed(2))
+  const sgst = parseFloat((totalGst / 2).toFixed(2))
+  const grandTotal = parseFloat((subtotal + totalGst).toFixed(2))
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -103,11 +111,13 @@ export default function Checkout() {
         state: { 
           orderId: order.id, 
           customerDetails: formData,
-          items: cartItems,
+          items: itemsWithGst,
           totals: {
-            subtotal: totalAmount,
-            gst: gstAmount,
-            grandTotal: grandTotal
+            subtotal,
+            cgst,
+            sgst,
+            totalGst,
+            grandTotal
           }
         } 
       })
@@ -161,16 +171,20 @@ export default function Checkout() {
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#666' }}>
             <span>Items ({cartItems.length})</span>
-            <span>₹{totalAmount}</span>
+            <span>₹{subtotal.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#666' }}>
+            <span>CGST</span>
+            <span>₹{cgst.toFixed(2)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, color: '#666', borderBottom: '1px solid #eee', paddingBottom: 16 }}>
-            <span>GST (18%)</span>
-            <span>₹{gstAmount}</span>
+            <span>SGST</span>
+            <span>₹{sgst.toFixed(2)}</span>
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>
             <span>Total to Pay</span>
-            <span style={{ color: '#2d7a4f' }}>₹{grandTotal}</span>
+            <span style={{ color: '#2d7a4f' }}>₹{grandTotal.toFixed(2)}</span>
           </div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 4, textAlign: 'right' }}>
             Payment Method: Cash on Delivery (COD)

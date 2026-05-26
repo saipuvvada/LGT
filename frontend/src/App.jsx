@@ -10,19 +10,53 @@ const categories = [
 ]
 
 const heroSlides = [
-  { variant: 'green', tag: '🌾 Kharif Season Deals', headline: 'Upto 40% Off on Pesticides', sub: 'Shop top brands — Bayer, Syngenta, BASF & more' },
-  { variant: 'teal', tag: '🌿 New Arrivals', headline: 'Premium Fertilizers In Stock', sub: 'Boost yield with IFFCO, Coromandel & Multiplex' },
-  { variant: 'orange', tag: '🌱 Seed Season', headline: 'Hybrid Seeds at Best Prices', sub: 'Cotton, Paddy, Chilli, Tomato & more' },
+  {
+    id: 'pesticides',
+    path: '/category/pesticides',
+    tag: '🌾 Kharif Season Deals',
+    headline: 'Upto 40% Off on Pesticides',
+    sub: 'Shop top brands — Bayer, Syngenta, BASF & more',
+    icon: '🧴',
+    accentColor: '#a5d6a7'
+  },
+  {
+    id: 'fertilizers',
+    path: '/category/fertilizers',
+    tag: '🌿 New Arrivals',
+    headline: 'Premium Fertilizers In Stock',
+    sub: 'Boost your yield with the best NPK & organic blends',
+    icon: '🌿',
+    accentColor: '#80cbc4'
+  },
+  {
+    id: 'seeds',
+    path: '/category/seeds',
+    tag: '🌱 Seed Season',
+    headline: 'Hybrid Seeds at Best Prices',
+    sub: 'Cotton, Paddy, Chilli, Tomato & more certified varieties',
+    icon: '🌱',
+    accentColor: '#ffcc80'
+  },
 ]
 
-const brands = [
-  { name: 'Bayer', emoji: '🅱️' },
-  { name: 'Syngenta', emoji: '🌿' },
-  { name: 'BASF', emoji: '⚗️' },
-  { name: 'Coromandel', emoji: '🌾' },
-  { name: 'UPL', emoji: '🧪' },
-  { name: 'Rallis', emoji: '🌱' },
-]
+const brandEmojis = {
+  'Bayer':       '🔬',  // pharma/science leader
+  'Syngenta':    '🌸',  // crop science & flowers
+  'BASF':        '⚗️',  // chemical giant
+  'Coromandel':  '🌾',  // fertilizer / grain
+  'UPL':         '🧫',  // bioscience / agri solutions
+  'Rallis':      '🪴',  // plant growth / nursery
+  'Dhanuka':     '🚁',  // precision crop protection (aerial)
+  'Parijat':     '🌺',  // named after parijat flower
+  'Godrej':      '🏡',  // household / agri consumer brand
+  'PI':          '🔭',  // research-driven agriscience
+  'FMC':         '🛡️',  // crop protection
+  'Dupont':      '💎',  // innovation / premium
+  'IFFCO':       '⚖️',  // cooperative / balanced nutrition
+  'Multiplex':   '🌿',  // micronutrients / plant health
+  'Sumitomo':    '🌊',  // japanese agri brand
+  'Dow':         '🧬',  // biotech
+}
 
 function Toast({ message, visible }) {
   return <div className={`toast ${visible ? 'show' : ''}`}>✅ {message}</div>
@@ -101,6 +135,11 @@ function ProductCard({ product, handleAdd }) {
       </div>
       <div className="product-brand">{product.brand || product.categories?.name || 'AgroDeals'}</div>
       <div className="product-name">{product.name}</div>
+      {product.quantity && (
+        <div style={{ fontSize: '12px', color: 'var(--text-light)', marginBottom: '8px', fontWeight: '500' }}>
+          🧪 Size: <strong>{product.quantity}</strong>
+        </div>
+      )}
       <div className="product-prices">
         <span className="price-original">₹{originalPrice}</span>
         <span className="price-sale">₹{product.price}</span>
@@ -124,6 +163,7 @@ export default function App() {
   const [user, setUser] = useState(null)
 
   const [products, setProducts] = useState([])
+  const [selectedBrand, setSelectedBrand] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt || null)
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
   const [showInstallGuide, setShowInstallGuide] = useState(false)
@@ -196,7 +236,7 @@ export default function App() {
       .select('*, categories(name, slug)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-      .limit(10)
+      .limit(100)
     
     if (data) setProducts(data)
   }
@@ -237,6 +277,22 @@ export default function App() {
       }
     }
   }
+
+  const activeBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).map(name => ({
+    name,
+    emoji: brandEmojis[name] || '🏷️'
+  }))
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = !search || 
+      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      (product.brand && product.brand.toLowerCase().includes(search.toLowerCase())) ||
+      (product.description && product.description.toLowerCase().includes(search.toLowerCase()))
+
+    const matchesBrand = !selectedBrand || product.brand === selectedBrand
+
+    return matchesSearch && matchesBrand
+  })
 
   const curr = heroSlides[slide]
 
@@ -299,18 +355,36 @@ export default function App() {
         <div className="category-tabs">
           {categories.map((cat) => (
             <div key={cat.id} className="cat-tab" onClick={() => navigate(cat.path)}>
-              <div className="cat-tab-icon">{cat.emoji}</div>
+              <div className={`cat-tab-icon cat-tab-icon--${cat.id}`}>
+                <span className="cat-tab-emoji">{cat.emoji}</span>
+              </div>
               <span className="cat-tab-label">{cat.label}</span>
             </div>
           ))}
         </div>
 
         <div className="hero-slider">
-          <div className={`hero-slide ${curr.variant}`}>
-            <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 600 }}>{curr.tag}</div>
-            <h2>{curr.headline}</h2>
-            <p>{curr.sub}</p>
-            <button className="hero-btn">Shop Now →</button>
+          <div className="hero-slide" style={{
+            background: curr.id === 'pesticides'
+              ? 'linear-gradient(135deg, #1a3a2a 0%, #2d7a4f 40%, #1b5e20 70%, #0a2e1a 100%)'
+              : curr.id === 'fertilizers'
+              ? 'linear-gradient(135deg, #004d40 0%, #00695c 40%, #00897b 70%, #00796b 100%)'
+              : 'linear-gradient(135deg, #2e1a00 0%, #5d3a00 40%, #bf6f00 70%, #e65100 100%)'
+          }}>
+            <div className="hero-slide-inner">
+              <div className="hero-slide-content">
+                <div className="hero-slide-tag">{curr.tag}</div>
+                <h2 className="hero-slide-headline">{curr.headline}</h2>
+                <p className="hero-slide-sub">{curr.sub}</p>
+                <button className="hero-btn" onClick={() => navigate(curr.path)}
+                  style={{ backgroundColor: curr.accentColor, color: '#1a2e22' }}
+                >
+                  Shop Now →
+                </button>
+              </div>
+              <div className="hero-slide-bg-icon">{curr.icon}</div>
+            </div>
+            <div className="hero-slide-pattern" />
           </div>
           <div className="slide-dots">
             {heroSlides.map((_, i) => <div key={i} className={`dot ${i === slide ? 'active' : ''}`} onClick={() => setSlide(i)} />)}
@@ -319,35 +393,65 @@ export default function App() {
 
         <div className="section" style={{ background: 'white', margin: '0 0 4px' }}>
           <div className="section-header">
-            <div className="section-title">📈 New Arrivals</div>
+            <div className="section-title">
+              {selectedBrand ? `🌾 ${selectedBrand} Products` : '📈 New Arrivals'}
+            </div>
           </div>
           
-          {products.length === 0 ? (
-            <div style={{ padding: 20, textAlign: 'center', color: '#888' }}>
-              No products found. Please add some via the Admin Panel.
+          {filteredProducts.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#888', background: '#f9f9f9', borderRadius: '10px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</div>
+              No products found matching your selection.
             </div>
           ) : (
             <div className="products-grid">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} handleAdd={handleAdd} />
               ))}
             </div>
           )}
         </div>
 
-        <div className="section">
-          <div className="section-header">
-            <div className="section-title">🏷️ Shop by Brand</div>
+        {activeBrands.length > 0 && (
+          <div className="section">
+            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="section-title">🏷️ Shop by Brand</div>
+              {selectedBrand && (
+                <span 
+                  className="see-all" 
+                  onClick={() => setSelectedBrand(null)}
+                  style={{ cursor: 'pointer', color: '#e53935', fontSize: '12.5px', fontWeight: 'bold' }}
+                >
+                  Clear Filter ✕
+                </span>
+              )}
+            </div>
+            <div className="brands-scroll">
+              {activeBrands.map((b) => {
+                const isActive = selectedBrand === b.name
+                return (
+                  <div 
+                    key={b.name} 
+                    className={`brand-card ${isActive ? 'active' : ''}`}
+                    onClick={() => setSelectedBrand(isActive ? null : b.name)}
+                    style={{
+                      border: isActive ? '2px solid var(--green-primary)' : '1px solid var(--border)',
+                      background: isActive ? '#e8f5e9' : 'white',
+                      color: isActive ? 'var(--green-primary)' : 'inherit',
+                      fontWeight: isActive ? 'bold' : 'normal',
+                      padding: '14px 10px',
+                      transition: 'all 0.2s',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div className="brand-emoji-wrap">{b.emoji}</div>
+                    <span className="brand-name" style={{ color: isActive ? 'var(--green-primary)' : 'var(--text-mid)' }}>{b.name}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-          <div className="brands-scroll">
-            {brands.map((b) => (
-              <div key={b.name} className="brand-card">
-                <span>{b.emoji}</span>
-                <span className="brand-name">{b.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
       </main>
 
