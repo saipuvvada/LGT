@@ -104,7 +104,11 @@ const Support = () => {
 
     // 2. Send via FormSubmit AJAX API
     try {
-      const response = await fetch("https://formsubmit.co/ajax/saipuvvada12@gmail.com", {
+      const endpoint = import.meta.env.DEV
+        ? 'https://formsubmit.co/ajax/saipuvvada12@gmail.com'
+        : '/api/send-email'
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { 
           'Content-Type': 'application/json',
@@ -123,7 +127,7 @@ const Support = () => {
       });
 
       const resData = await response.json();
-      if (response.ok && resData.success === "true") {
+      if (response.ok && (resData.success === true || resData.success === "true")) {
         emailSent = true;
       }
     } catch (err) {

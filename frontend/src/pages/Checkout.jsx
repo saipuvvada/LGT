@@ -132,7 +132,11 @@ export default function Checkout() {
 
       let emailSent = false
       try {
-        const res = await fetch('https://formsubmit.co/ajax/saipuvvada12@gmail.com', {
+        const endpoint = import.meta.env.DEV
+          ? 'https://formsubmit.co/ajax/saipuvvada12@gmail.com'
+          : '/api/send-email'
+
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({
@@ -154,7 +158,7 @@ export default function Checkout() {
           })
         })
         const data = await res.json()
-        if (res.ok && data.success === 'true') emailSent = true
+        if (res.ok && (data.success === true || data.success === 'true')) emailSent = true
       } catch (emailErr) {
         console.warn('Invoice email dispatch failed (non-blocking):', emailErr)
       }
