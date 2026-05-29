@@ -4,11 +4,38 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
+  const web3formsKey = process.env.WEB3FORMS_ACCESS_KEY || process.env.VITE_WEB3FORMS_ACCESS_KEY;
+
+  if (web3formsKey) {
+    console.log('Routing email via Web3Forms...');
+    try {
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          access_key: web3formsKey,
+          ...req.body,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Web3Forms API response status:', response.status, data);
+      return res.status(response.status).json({
+        success: data.success,
+        message: data.message,
+      });
+    } catch (error) {
+      console.error('Web3Forms email dispatch failed:', error);
+      return res.status(500).json({ success: false, message: error.message || 'Web3Forms Error' });
+    }
+  }
+
+  // Fallback to FormSubmit if no Web3Forms key is set
+  console.log('Routing email via FormSubmit (Fallback)...');
   try {
-    // Forward payload to FormSubmit from the server side.
-    // This strips browser-specific Vercel preview/deployment headers (Origin/Referer)
-    // that trigger FormSubmit's strict client-side spam and bot filters.
-    console.log('Sending server-side email dispatch...');
     const response = await fetch('https://formsubmit.co/ajax/saipuvvada12@gmail.com', {
       method: 'POST',
       headers: {
