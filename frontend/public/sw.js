@@ -2,7 +2,6 @@ const CACHE_NAME = 'agrodeals-cache-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/favicon.svg',
   '/logo.png',
   '/manifest.json'
 ];
