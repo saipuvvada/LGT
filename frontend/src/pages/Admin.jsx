@@ -41,12 +41,37 @@ function Admin() {
   const [orderSearch, setOrderSearch] = useState('')
   const [orderStatusFilter, setOrderStatusFilter] = useState('all')
 
+  // ── Auth Diagnostics State ────────────────────────────────
+  const [currentUser, setCurrentUser] = useState(null)
+  const [dbAdminStatus, setDbAdminStatus] = useState(null)
+
   // Auto-lock when admin navigates away (component unmounts)
   useEffect(() => {
     return () => {
       sessionStorage.removeItem('admin_auth')
     }
   }, [])
+
+  useEffect(() => {
+    async function getProfile() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUser(user)
+        const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+        if (data) {
+          setDbAdminStatus(data.is_admin)
+        } else {
+          setDbAdminStatus(false)
+        }
+      } else {
+        setCurrentUser(null)
+        setDbAdminStatus(false)
+      }
+    }
+    if (isAuthorized) {
+      getProfile()
+    }
+  }, [isAuthorized])
 
   useEffect(() => {
     if (isAuthorized) {
@@ -324,6 +349,44 @@ function Admin() {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
         <h1 style={{ margin:0, fontSize:'22px', fontWeight:800 }}>🛠️ Admin Dashboard</h1>
         <Link to="/" style={{ color:'#2d7a4f', fontWeight:'bold', fontSize:'13px' }}>← Back to Store</Link>
+      </div>
+
+      {/* Auth Diagnostics Checker */}
+      <div style={{ 
+        background: '#f8fafc', 
+        border: '1.5px solid #cbd5e1', 
+        padding: '12px 16px', 
+        borderRadius: '8px', 
+        fontSize: '13px', 
+        color: '#475569', 
+        marginBottom: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px'
+      }}>
+        <div>
+          {currentUser ? (
+            <span>
+              👤 Logged in as: <strong>{currentUser.email}</strong> 
+              {dbAdminStatus === true ? (
+                <span style={{ color: '#047857', fontWeight: 'bold', marginLeft: '6px', background: '#ecfdf5', padding: '3px 8px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>🛡️ Database Admin Verified</span>
+              ) : (
+                <span style={{ color: '#b91c1c', fontWeight: 'bold', marginLeft: '6px', background: '#fef2f2', padding: '3px 8px', borderRadius: '4px', border: '1px solid #fca5a5' }}>👤 Customer Role (Orders Read-Only)</span>
+              )}
+            </span>
+          ) : (
+            <span style={{ color: '#b45309', fontWeight: 'bold' }}>
+              ⚠️ Not Logged In! Go to Login to sign in with your saipuvvada12@gmail.com administrator account.
+            </span>
+          )}
+        </div>
+        {!currentUser && (
+          <Link to="/login" style={{ background: '#2d7a4f', color: 'white', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}>
+            Go to Login
+          </Link>
+        )}
       </div>
 
       {/* Tab Selectors */}
