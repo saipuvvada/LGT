@@ -130,10 +130,9 @@ function Admin() {
   }
 
   async function updateOrderStatus(orderId, newStatus) {
-    const dbStatus = newStatus === 'delivered' ? 'completed' : newStatus
     const { data, error } = await supabase
       .from('orders')
-      .update({ status: dbStatus })
+      .update({ status: newStatus })
       .eq('id', orderId)
       .select()
     
@@ -823,9 +822,7 @@ function Admin() {
               const filteredOrders = orders.filter(o => {
                 const s = orderSearch.toLowerCase().trim()
                 if (!s) {
-                  return orderStatusFilter === 'all' || 
-                    o.status === orderStatusFilter || 
-                    (orderStatusFilter === 'delivered' && o.status === 'completed')
+                  return orderStatusFilter === 'all' || o.status === orderStatusFilter
                 }
 
                 const formattedInvoice = `ord-${o.id.substring(0, 8)}`.toLowerCase()
@@ -840,9 +837,7 @@ function Admin() {
                     item.products?.brand?.toLowerCase().includes(s)
                   )
 
-                const matchesStatus = orderStatusFilter === 'all' || 
-                  o.status === orderStatusFilter ||
-                  (orderStatusFilter === 'delivered' && o.status === 'completed')
+                const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter
 
                 return matchesSearch && matchesStatus
               })
@@ -862,7 +857,7 @@ function Admin() {
                       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     })
 
-                    const displayStatus = order.status === 'completed' ? 'delivered' : order.status
+                    const displayStatus = order.status
 
                     return (
                       <div key={order.id} className="admin-order-card">
@@ -908,7 +903,7 @@ function Admin() {
                               <strong>Address:</strong> {order.shipping_address}
                             </div>
 
-                            {order.status !== 'completed' && order.status !== 'cancelled' && (
+                            {order.status !== 'delivered' && order.status !== 'cancelled' && (
                               <button 
                                 onClick={() => updateOrderStatus(order.id, 'delivered')}
                                 style={{ 

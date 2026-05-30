@@ -88,7 +88,6 @@ const Orders = () => {
   const getStatusDetails = (status) => {
     switch (status) {
       case 'pending_verification':
-      case 'pending':
         return { 
           label: 'Pending Verification', 
           color: '#b45309', 
@@ -116,7 +115,6 @@ const Orders = () => {
           step: 3
         };
       case 'delivered':
-      case 'completed':
         return { 
           label: 'Delivered', 
           color: '#047857', 
