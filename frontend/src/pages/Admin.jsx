@@ -40,6 +40,7 @@ function Admin() {
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [orderSearch, setOrderSearch] = useState('')
   const [orderStatusFilter, setOrderStatusFilter] = useState('all')
+  const [customerSearch, setCustomerSearch] = useState('')
 
   // ── Auth Diagnostics State ────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null)
@@ -116,16 +117,43 @@ function Admin() {
 
   async function fetchCustomers() {
     setLoadingCustomers(true)
-    const { data, error } = await supabase
+    const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
     
-    if (!error && data) {
-      setCustomers(data)
-    } else if (error) {
-      console.error('Error fetching customers:', error)
+    if (profilesError) {
+      console.error('Error fetching customers:', profilesError)
+      setLoadingCustomers(false)
+      return
     }
+
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('user_id, total_price')
+
+    if (ordersError) {
+      console.error('Error fetching orders for stats:', ordersError)
+    }
+
+    const statsMap = {}
+    if (ordersData) {
+      ordersData.forEach(order => {
+        if (!statsMap[order.user_id]) {
+          statsMap[order.user_id] = { count: 0, total: 0 }
+        }
+        statsMap[order.user_id].count += 1
+        statsMap[order.user_id].total += parseFloat(order.total_price || 0)
+      })
+    }
+
+    const customersWithStats = (profilesData || []).map(profile => ({
+      ...profile,
+      ordersCount: statsMap[profile.id]?.count || 0,
+      totalSpent: statsMap[profile.id]?.total || 0
+    }))
+
+    setCustomers(customersWithStats)
     setLoadingCustomers(false)
   }
 
@@ -985,59 +1013,116 @@ function Admin() {
       {/* ── CUSTOMERS TAB CONTENT ─────────────────────────── */}
       {activeTab === 'customers' && (
         <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ margin: '0 0 16px', fontSize: '17px', fontWeight: 800 }}>👥 Registered Customers</h2>
-          <p style={{ fontSize: '13px', color: '#666', marginBottom: '20px' }}>
-            List of all farmers and buyers registered on the AgroDeals platform. You can toggle admin privileges for any profile.
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: 800 }}>👥 Customer Directory & Activity</h2>
+              <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
+                List of all registered farmers and buyers, showing their purchase metrics and administrator rights.
+              </p>
+            </div>
+            {/* Customer Search Bar */}
+            <div style={{ width: '250px' }}>
+              <input 
+                type="text" 
+                placeholder="🔍 Search customers..." 
+                value={customerSearch} 
+                onChange={e => setCustomerSearch(e.target.value)} 
+                style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px' }}
+              />
+            </div>
+          </div>
 
           {loadingCustomers ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>⏳ Loading customer directory...</div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Email Address</th>
-                    <th>Name</th>
-                    <th>Signed Up</th>
-                    <th>Access Level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map(cust => {
-                    const signupDate = new Date(cust.created_at).toLocaleDateString('en-IN', {
-                      year: 'numeric', month: 'short', day: 'numeric'
-                    })
+            (() => {
+              const query = customerSearch.toLowerCase().trim()
+              const filteredCustomers = customers.filter(cust => {
+                return !query || 
+                  cust.email?.toLowerCase().includes(query) ||
+                  cust.full_name?.toLowerCase().includes(query)
+              })
 
-                    return (
-                      <tr key={cust.id}>
-                        <td style={{ fontWeight: 600 }}>{cust.email}</td>
-                        <td>{cust.full_name || '—'}</td>
-                        <td style={{ color: '#666' }}>{signupDate}</td>
-                        <td>
-                          <button
-                            onClick={() => toggleAdminStatus(cust.id, cust.is_admin)}
-                            style={{
-                              padding: '5px 10px',
-                              fontSize: '11.5px',
-                              fontWeight: 'bold',
-                              borderRadius: '4px',
-                              border: 'none',
-                              cursor: 'pointer',
-                              background: cust.is_admin ? '#fff3cd' : '#f1f5f9',
-                              color: cust.is_admin ? '#856404' : '#475569',
-                              transition: 'all 0.15s'
-                            }}
-                          >
-                            {cust.is_admin ? '🛡️ Administrator' : '👤 Customer (Make Admin)'}
-                          </button>
-                        </td>
+              if (filteredCustomers.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    🔍 No customers found matching "{customerSearch}".
+                  </div>
+                )
+              }
+
+              return (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Email Address</th>
+                        <th>Full Name</th>
+                        <th>Joined On</th>
+                        <th style={{ textAlign: 'center' }}>Total Orders</th>
+                        <th style={{ textAlign: 'right' }}>Total Spend (₹)</th>
+                        <th>Buyer Status</th>
+                        <th>Access Level</th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {filteredCustomers.map(cust => {
+                        const signupDate = new Date(cust.created_at).toLocaleDateString('en-IN', {
+                          year: 'numeric', month: 'short', day: 'numeric'
+                        })
+
+                        const isBuyer = cust.ordersCount > 0
+
+                        return (
+                          <tr key={cust.id}>
+                            <td style={{ fontWeight: 600 }}>{cust.email}</td>
+                            <td>{cust.full_name || '—'}</td>
+                            <td style={{ color: '#666' }}>{signupDate}</td>
+                            <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                              {cust.ordersCount}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 'bold', color: isBuyer ? 'var(--green-primary)' : '#888' }}>
+                              {isBuyer ? `₹${parseFloat(cust.totalSpent).toFixed(2)}` : '₹0.00'}
+                            </td>
+                            <td>
+                              <span style={{ 
+                                padding: '3px 8px', 
+                                borderRadius: '12px', 
+                                fontSize: '11px', 
+                                fontWeight: 'bold',
+                                background: isBuyer ? '#ecfdf5' : '#f1f5f9',
+                                color: isBuyer ? '#047857' : '#475569',
+                                border: `1.5px solid ${isBuyer ? '#a7f3d0' : '#e2e8f0'}`
+                              }}>
+                                {isBuyer ? '🌾 Active Buyer' : '👤 Signed Up'}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                onClick={() => toggleAdminStatus(cust.id, cust.is_admin)}
+                                style={{
+                                  padding: '5px 10px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 'bold',
+                                  borderRadius: '4px',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  background: cust.is_admin ? '#fff3cd' : '#f1f5f9',
+                                  color: cust.is_admin ? '#856404' : '#475569',
+                                  transition: 'all 0.15s'
+                                }}
+                              >
+                                {cust.is_admin ? '🛡️ Administrator' : '👤 Customer (Make Admin)'}
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()
           )}
         </div>
       )}
