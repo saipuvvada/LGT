@@ -2864,3 +2864,30 @@ a { text-decoration: none; color: inherit; }
   background: #f8fafc;
 }
 
+/* ============================
+   MOBILE RESPONSIVENESS MEDIA QUERIES
+   ============================ */
+@media (max-width: 480px) {
+  .logo {
+    font-size: 18px !important;
+  }
+  .logo img {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .install-header-btn {
+    padding: 4px 8px !important;
+    font-size: 9.5px !important;
+    margin-right: 2px !important;
+  }
+  .header-actions {
+    gap: 8px !important;
+  }
+  .header-top {
+    padding: 10px 12px 8px !important;
+  }
+  .page-content {
+    padding-top: 110px !important;
+  }
+}
+

@@ -62,6 +62,7 @@ export default function Checkout() {
 
   const isLoyaltyValid = applyLoyalty && 
     loyaltyData.previousOrderId && 
+    pastOrders.some(o => o.id === loyaltyData.previousOrderId || o.transaction_id === loyaltyData.previousOrderId) &&
     loyaltyData.landAcres && 
     loyaltyData.cropType && 
     loyaltyData.medicinesUsed;
@@ -394,13 +395,17 @@ export default function Checkout() {
                 />
               </div>
 
-              {isLoyaltyValid ? (
+              {pastOrders.length === 0 ? (
+                <div style={{ background: '#fde8e8', border: '1px solid #f8b4b4', color: '#9b1c1c', padding: '10px 14px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 'bold' }}>
+                  ⚠️ No previous orders found for this account. The Farmer Loyalty Program is only eligible for existing customers who have made a purchase.
+                </div>
+              ) : isLoyaltyValid ? (
                 <div style={{ background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#2d7a4f', padding: '10px 14px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  🎉 10% Loyalty Discount Successfully Applied!
+                  🎉 10% Loyalty Discount Successfully Verified & Applied!
                 </div>
               ) : (
                 <div style={{ background: '#fff9c4', border: '1px solid #fff59d', color: '#b7791f', padding: '10px 14px', borderRadius: '6px', fontSize: '12.5px', fontWeight: '500' }}>
-                  ℹ️ Fill out all agricultural details above to unlock your 10% discount.
+                  ℹ️ Make sure to select or enter a valid previous order ID and fill out all agricultural details above to unlock your 10% discount.
                 </div>
               )}
             </div>

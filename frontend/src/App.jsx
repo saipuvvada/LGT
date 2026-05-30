@@ -216,6 +216,11 @@ export default function App() {
   const [products, setProducts] = useState([])
   const [selectedBrand, setSelectedBrand] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt || null)
+  const [isInstalled, setIsInstalled] = useState(
+    () => window.matchMedia('(display-mode: standalone)').matches || 
+          window.navigator.standalone === true || 
+          localStorage.getItem('pwa-installed') === 'true'
+  )
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
   const [showInstallGuide, setShowInstallGuide] = useState(false)
 
@@ -253,6 +258,15 @@ export default function App() {
     }
     window.addEventListener('pwa-prompt-available', handleGlobalPromptAvailable)
 
+    // PWA: Custom listener for app installation success
+    const handleAppInstalled = () => {
+      console.log('PWA was installed')
+      localStorage.setItem('pwa-installed', 'true')
+      setIsInstalled(true)
+      setDeferredPrompt(null)
+    }
+    window.addEventListener('appinstalled', handleAppInstalled)
+
     // Push notification auto trigger
     if ('Notification' in window && Notification.permission === 'default') {
       const alreadyPrompted = localStorage.getItem('agrodeals-notification-prompted')
@@ -263,6 +277,7 @@ export default function App() {
         return () => {
           window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
           window.removeEventListener('pwa-prompt-available', handleGlobalPromptAvailable)
+          window.removeEventListener('appinstalled', handleAppInstalled)
           listener.subscription.unsubscribe()
           clearTimeout(timer)
         }
@@ -272,6 +287,7 @@ export default function App() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('pwa-prompt-available', handleGlobalPromptAvailable)
+      window.removeEventListener('appinstalled', handleAppInstalled)
       listener.subscription.unsubscribe()
     }
   }, [])
@@ -308,6 +324,10 @@ export default function App() {
       promptEvent.prompt()
       const { outcome } = await promptEvent.userChoice
       console.log(`PWA install prompt choice: ${outcome}`)
+      if (outcome === 'accepted') {
+        localStorage.setItem('pwa-installed', 'true')
+        setIsInstalled(true)
+      }
       setDeferredPrompt(null)
       window.deferredPrompt = null
     } else {
@@ -356,36 +376,38 @@ export default function App() {
             AGRO<span>DEALS</span>
           </div>
           <div className="header-actions">
-            <button 
-              className="install-header-btn" 
-              onClick={handleInstallClick} 
-              aria-label="Install App"
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '6px', 
-                background: 'rgba(255,255,255,0.12)', 
-                border: 'none', 
-                borderRadius: '20px', 
-                padding: '6px 12px', 
-                fontSize: '11px', 
-                fontWeight: '700', 
-                color: 'white', 
-                cursor: 'pointer',
-                transition: 'background 0.2s',
-                marginRight: '6px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}
-              title="Install App"
-            >
-              <span>Install App</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}>
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </button>
+            {!isInstalled && (
+              <button 
+                className="install-header-btn" 
+                onClick={handleInstallClick} 
+                aria-label="Install App"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  background: 'rgba(255,255,255,0.12)', 
+                  border: 'none', 
+                  borderRadius: '20px', 
+                  padding: '6px 12px', 
+                  fontSize: '11px', 
+                  fontWeight: '700', 
+                  color: 'white', 
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                  marginRight: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}
+                title="Install App"
+              >
+                <span>Install App</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            )}
             <Link to="/cart" className="cart-btn" aria-label="Cart">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
