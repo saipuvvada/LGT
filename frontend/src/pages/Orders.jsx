@@ -116,6 +116,7 @@ const Orders = () => {
           step: 3
         };
       case 'delivered':
+      case 'completed':
         return { 
           label: 'Delivered', 
           color: '#047857', 

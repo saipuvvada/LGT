@@ -130,7 +130,7 @@ function Admin() {
   }
 
   async function updateOrderStatus(orderId, newStatus) {
-    const dbStatus = newStatus === 'pending_verification' ? 'pending' : newStatus
+    const dbStatus = newStatus === 'delivered' ? 'completed' : newStatus
     const { data, error } = await supabase
       .from('orders')
       .update({ status: dbStatus })
@@ -825,7 +825,7 @@ function Admin() {
                 if (!s) {
                   return orderStatusFilter === 'all' || 
                     o.status === orderStatusFilter || 
-                    (orderStatusFilter === 'pending_verification' && o.status === 'pending')
+                    (orderStatusFilter === 'delivered' && o.status === 'completed')
                 }
 
                 const formattedInvoice = `ord-${o.id.substring(0, 8)}`.toLowerCase()
@@ -842,7 +842,7 @@ function Admin() {
 
                 const matchesStatus = orderStatusFilter === 'all' || 
                   o.status === orderStatusFilter ||
-                  (orderStatusFilter === 'pending_verification' && o.status === 'pending')
+                  (orderStatusFilter === 'delivered' && o.status === 'completed')
 
                 return matchesSearch && matchesStatus
               })
@@ -862,7 +862,7 @@ function Admin() {
                       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     })
 
-                    const displayStatus = order.status === 'pending' ? 'pending_verification' : order.status
+                    const displayStatus = order.status === 'completed' ? 'delivered' : order.status
 
                     return (
                       <div key={order.id} className="admin-order-card">
@@ -908,7 +908,7 @@ function Admin() {
                               <strong>Address:</strong> {order.shipping_address}
                             </div>
 
-                            {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                            {order.status !== 'completed' && order.status !== 'cancelled' && (
                               <button 
                                 onClick={() => updateOrderStatus(order.id, 'delivered')}
                                 style={{ 
