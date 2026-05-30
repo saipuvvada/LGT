@@ -373,6 +373,21 @@ const Orders = () => {
                         })}
                       </div>
 
+                      {/* Loyalty Discount & Farmer Survey Answers */}
+                      {parseFloat(order.loyalty_discount_applied || 0) > 0 && (
+                        <div style={{ backgroundColor: '#f0faf4', border: '1px solid #c8e6c9', padding: '12px', borderRadius: '8px', fontSize: '12.5px', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                          <div style={{ color: '#2d7a4f', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            🌾 Farmer Loyalty Discount: -₹{parseFloat(order.loyalty_discount_applied).toFixed(2)}
+                          </div>
+                          <div style={{ color: 'var(--text-mid)', fontSize: '12px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span>• <b>Previous Order ID:</b> {order.previous_order_id ? String(order.previous_order_id).substring(0,8).toUpperCase() : 'Manual Entry'}</span>
+                            <span>• <b>Farm Size Cultivated:</b> {order.land_acres} Acres</span>
+                            <span>• <b>Type of Crop:</b> {order.crop_type}</span>
+                            <span>• <b>Previously Used Medicines:</b> {order.previous_medicines_used}</span>
+                          </div>
+                        </div>
+                      )}
+ 
                       {/* Delivery and Address Details */}
                       <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', fontSize: '12.5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>

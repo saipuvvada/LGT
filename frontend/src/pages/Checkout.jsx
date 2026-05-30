@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
@@ -16,6 +16,37 @@ export default function Checkout() {
     pincode: ''
   })
 
+  const [pastOrders, setPastOrders] = useState([])
+  const [applyLoyalty, setApplyLoyalty] = useState(false)
+  const [loyaltyData, setLoyaltyData] = useState({
+    previousOrderId: '',
+    landAcres: '',
+    cropType: '',
+    medicinesUsed: ''
+  })
+
+  useEffect(() => {
+    fetchPastOrders()
+  }, [])
+
+  const fetchPastOrders = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, created_at, transaction_id, total_price')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false })
+        if (!error && data) {
+          setPastOrders(data)
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching past orders:', err)
+    }
+  }
+
   // Per-item GST calculation using each product's gst_rate field
   const itemsWithGst = cartItems.map(item => {
     const rate = item.gst_rate ?? 18  // fallback to 18% if not set
@@ -27,7 +58,19 @@ export default function Checkout() {
   const totalGst = parseFloat(itemsWithGst.reduce((s, i) => s + i.gstAmount, 0).toFixed(2))
   const cgst = parseFloat((totalGst / 2).toFixed(2))
   const sgst = parseFloat((totalGst / 2).toFixed(2))
-  const grandTotal = parseFloat((subtotal + totalGst).toFixed(2))
+  const baseTotal = parseFloat((subtotal + totalGst).toFixed(2))
+
+  const isLoyaltyValid = applyLoyalty && 
+    loyaltyData.previousOrderId && 
+    loyaltyData.landAcres && 
+    loyaltyData.cropType && 
+    loyaltyData.medicinesUsed;
+
+  const loyaltyDiscount = isLoyaltyValid 
+    ? parseFloat((baseTotal * 0.10).toFixed(2)) 
+    : 0.00;
+
+  const grandTotal = parseFloat((baseTotal - loyaltyDiscount).toFixed(2))
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -64,7 +107,12 @@ export default function Checkout() {
           customer_name: formData.fullName,
           customer_phone: formData.phone,
           shipping_address: `${formData.address}, ${formData.city} - ${formData.pincode}`,
-          status: 'pending_verification'
+          status: 'pending_verification',
+          loyalty_discount_applied: loyaltyDiscount,
+          previous_order_id: isLoyaltyValid ? loyaltyData.previousOrderId : null,
+          land_acres: isLoyaltyValid ? parseFloat(loyaltyData.landAcres) : null,
+          crop_type: isLoyaltyValid ? loyaltyData.cropType : null,
+          previous_medicines_used: isLoyaltyValid ? loyaltyData.medicinesUsed : null
         }])
         .select()
         .single()
@@ -111,6 +159,15 @@ export default function Checkout() {
         `${i + 1}. ${item.name} (${item.quantity_vol || ''}) x${item.quantity} @ ₹${item.price.toFixed(2)} + GST ₹${item.gstAmount.toFixed(2)} = ₹${(item.price * item.quantity + item.gstAmount).toFixed(2)}`
       ).join('\n')
 
+      const loyaltyDetailsText = isLoyaltyValid
+        ? `🌾 LOYALTY DISCOUNT CLAIMED\n` +
+          `───────────────────────────────\n` +
+          `• Prev Order ID:   ${loyaltyData.previousOrderId}\n` +
+          `• Farm Size:       ${loyaltyData.landAcres} Acres\n` +
+          `• Crop Type:       ${loyaltyData.cropType}\n` +
+          `• Medicines Used:  ${loyaltyData.medicinesUsed}\n\n`
+        : '';
+
       const emailBody =
         `📦 NEW ORDER RECEIVED — ${invoiceNo}\n` +
         `══════════════════════════════════\n\n` +
@@ -119,12 +176,14 @@ export default function Checkout() {
         `📍 Address:  ${formData.address}, ${formData.city} - ${formData.pincode}\n` +
         `💳 Payment:  Cash on Delivery (COD)\n` +
         `🔖 Transaction ID: ${transactionId}\n\n` +
+        loyaltyDetailsText +
         `─── ORDER ITEMS ───────────────────\n` +
         `${itemLines}\n\n` +
         `─── TOTALS ────────────────────────\n` +
         `Subtotal (excl. GST): ₹${subtotal.toFixed(2)}\n` +
         `CGST:                 ₹${cgst.toFixed(2)}\n` +
         `SGST:                 ₹${sgst.toFixed(2)}\n` +
+        (loyaltyDiscount > 0 ? `Loyalty Discount (10%): -₹${loyaltyDiscount.toFixed(2)}\n` : '') +
         `Grand Total (COD):    ₹${grandTotal.toFixed(2)}\n\n` +
         `══════════════════════════════════\n` +
         `Lakshmi Ganapathi Traders — AgroDeals\n` +
@@ -151,7 +210,12 @@ export default function Checkout() {
             Subtotal:      `₹${subtotal.toFixed(2)}`,
             CGST:          `₹${cgst.toFixed(2)}`,
             SGST:          `₹${sgst.toFixed(2)}`,
+            Loyalty_Discount: loyaltyDiscount > 0 ? `-₹${loyaltyDiscount.toFixed(2)}` : '₹0.00',
             Grand_Total:   `₹${grandTotal.toFixed(2)}`,
+            Loyalty_Claimed: isLoyaltyValid ? 'Yes' : 'No',
+            Land_Acres:    isLoyaltyValid ? `${loyaltyData.landAcres} Acres` : 'N/A',
+            Crop_Type:     isLoyaltyValid ? loyaltyData.cropType : 'N/A',
+            Previous_Medicines: isLoyaltyValid ? loyaltyData.medicinesUsed : 'N/A',
             Full_Details:  emailBody,
             _honey:        '',
             _template:     'box',
@@ -170,7 +234,7 @@ export default function Checkout() {
           orderId: order.id,
           customerDetails: formData,
           items: itemsWithGst,
-          totals: { subtotal, cgst, sgst, totalGst, grandTotal },
+          totals: { subtotal, cgst, sgst, totalGst, grandTotal, loyaltyDiscount },
           emailSent,
         }
       })
@@ -220,7 +284,130 @@ export default function Checkout() {
           </form>
         </div>
 
-        <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        {/* Farmer Loyalty Discount Section */}
+        <div className="loyalty-section">
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            🌾 Farmer Loyalty Program
+          </h3>
+          <p style={{ fontSize: 13, color: 'var(--text-mid)', marginBottom: 16, lineHeight: 1.4 }}>
+            Ordered from Lakshmi Ganapathi Traders before? Enter your previous order details to claim a **10% discount** on this purchase!
+          </p>
+
+          <label className="loyalty-checkbox-wrap">
+            <input 
+              type="checkbox" 
+              checked={applyLoyalty}
+              onChange={(e) => setApplyLoyalty(e.target.checked)}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--green-primary)' }}>
+              I have ordered from AgroDeals before
+            </span>
+          </label>
+
+          {applyLoyalty && (
+            <div className="loyalty-survey-box">
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dark)' }}>
+                Agricultural & Previous Invoice Details:
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 4 }}>
+                  Select Previous Order / Invoice ID *
+                </label>
+                {pastOrders.length > 0 ? (
+                  <select 
+                    value={loyaltyData.previousOrderId}
+                    onChange={(e) => setLoyaltyData({ ...loyaltyData, previousOrderId: e.target.value })}
+                    style={inputStyle}
+                    required={applyLoyalty}
+                  >
+                    <option value="">-- Choose previous order --</option>
+                    {pastOrders.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.transaction_id || `ORD-${o.id.substring(0, 8)}`} (₹{o.total_price} - {new Date(o.created_at).toLocaleDateString('en-IN')})
+                      </option>
+                    ))}
+                    <option value="manual_or_other">Manual Entry / Other Dealer Invoice</option>
+                  </select>
+                ) : (
+                  <input 
+                    required={applyLoyalty}
+                    placeholder="Enter Previous Order/Invoice ID (e.g. COD-17180...)"
+                    value={loyaltyData.previousOrderId}
+                    onChange={(e) => setLoyaltyData({ ...loyaltyData, previousOrderId: e.target.value })}
+                    style={inputStyle}
+                  />
+                )}
+                {loyaltyData.previousOrderId === 'manual_or_other' && (
+                  <input 
+                    required={applyLoyalty}
+                    placeholder="Type Invoice ID or Previous Dealer Name here"
+                    value={loyaltyData.previousOrderId === 'manual_or_other' ? '' : loyaltyData.previousOrderId}
+                    onChange={(e) => setLoyaltyData({ ...loyaltyData, previousOrderId: e.target.value })}
+                    style={{ ...inputStyle, marginTop: 8 }}
+                  />
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 4 }}>
+                    Land Cultivated (Acres) *
+                  </label>
+                  <input 
+                    type="number" 
+                    step="0.1" 
+                    min="0"
+                    placeholder="e.g. 5" 
+                    value={loyaltyData.landAcres}
+                    onChange={(e) => setLoyaltyData({ ...loyaltyData, landAcres: e.target.value })}
+                    style={inputStyle}
+                    required={applyLoyalty}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 4 }}>
+                    Type of Crop Grown *
+                  </label>
+                  <input 
+                    placeholder="e.g. Cotton, Paddy" 
+                    value={loyaltyData.cropType}
+                    onChange={(e) => setLoyaltyData({ ...loyaltyData, cropType: e.target.value })}
+                    style={inputStyle}
+                    required={applyLoyalty}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 4 }}>
+                  Products / Medicines Used Previously from Us *
+                </label>
+                <textarea 
+                  placeholder="e.g. Sumiprempt Insecticide, Agromin Gold Fertilizer..." 
+                  value={loyaltyData.medicinesUsed}
+                  onChange={(e) => setLoyaltyData({ ...loyaltyData, medicinesUsed: e.target.value })}
+                  style={inputStyle}
+                  rows={2}
+                  required={applyLoyalty}
+                />
+              </div>
+
+              {isLoyaltyValid ? (
+                <div style={{ background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#2d7a4f', padding: '10px 14px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🎉 10% Loyalty Discount Successfully Applied!
+                </div>
+              ) : (
+                <div style={{ background: '#fff9c4', border: '1px solid #fff59d', color: '#b7791f', padding: '10px 14px', borderRadius: '6px', fontSize: '12.5px', fontWeight: '500' }}>
+                  ℹ️ Fill out all agricultural details above to unlock your 10% discount.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: 20 }}>
           <h3 style={{ marginBottom: 16 }}>Order Summary</h3>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#666' }}>
@@ -231,10 +418,17 @@ export default function Checkout() {
             <span>CGST</span>
             <span>₹{cgst.toFixed(2)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, color: '#666', borderBottom: '1px solid #eee', paddingBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, color: '#666', borderBottom: '1px solid #eee', paddingBottom: 12 }}>
             <span>SGST</span>
             <span>₹{sgst.toFixed(2)}</span>
           </div>
+
+          {loyaltyDiscount > 0 && (
+            <div className="discount-row-green">
+              <span>Loyalty Discount (10% Off)</span>
+              <span>-₹{loyaltyDiscount.toFixed(2)}</span>
+            </div>
+          )}
           
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>
             <span>Total to Pay</span>

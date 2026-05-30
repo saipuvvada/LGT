@@ -35,6 +35,11 @@ CREATE TABLE orders (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending', -- pending, processing, shipped, delivered, cancelled
   total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  loyalty_discount_applied DECIMAL(10, 2) DEFAULT 0.00,
+  previous_order_id UUID REFERENCES orders(id),
+  land_acres NUMERIC,
+  crop_type TEXT,
+  previous_medicines_used TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
