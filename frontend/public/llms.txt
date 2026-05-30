@@ -1,0 +1,15 @@
+# AgroDeals (Lakshmi Ganapathi Traders)
+
+An online agricultural store for Indian farmers to purchase genuine, registered farm inputs at competitive prices. Sourced directly from certified manufacturers with valid license numbers.
+
+## Core Offerings
+- **Pesticides Store**: Insecticides, Fungicides, and Herbicides to protect crops from pests and diseases.
+- **Fertilizers Store**: Balanced NPK mixtures, essential micronutrients, and premium organic crop foods.
+- **Seeds Store**: High-yielding, certified hybrid seeds for cotton, paddy, chilli, and tomato crops.
+- **Farmer Loyalty Program**: Repeat purchasers receive a 10% loyalty discount by detailing their cultivation profile (acres, crop type, past product usage).
+- **Support & Consultations**: Practical farm advisory and support ticket desk for agricultural questions.
+
+## Platform Metadata
+- Homepage URL: https://lgt-iota.vercel.app/
+- Store Location: Karempudi, Palnadu District, Andhra Pradesh, India
+- GST Registration: 37ANKPD0775A1ZC
