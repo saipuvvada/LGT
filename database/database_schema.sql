@@ -4,6 +4,7 @@ CREATE TABLE profiles (
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   avatar_url TEXT,
+  is_admin BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -133,4 +134,17 @@ CREATE POLICY "Anyone can submit support tickets" ON support_tickets FOR INSERT 
 
 -- Allow authenticated admins to view tickets
 CREATE POLICY "Authenticated users can view support tickets" ON support_tickets FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Admin Orders & Order Items Policies
+CREATE POLICY "Admins can view all orders" ON orders 
+  FOR SELECT 
+  USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
+
+CREATE POLICY "Admins can update all orders" ON orders 
+  FOR UPDATE 
+  USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
+
+CREATE POLICY "Admins can view all order items" ON order_items 
+  FOR SELECT 
+  USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
 
