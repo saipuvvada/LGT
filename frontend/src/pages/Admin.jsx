@@ -130,9 +130,10 @@ function Admin() {
   }
 
   async function updateOrderStatus(orderId, newStatus) {
+    const dbStatus = newStatus === 'pending_verification' ? 'pending' : newStatus
     const { data, error } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update({ status: dbStatus })
       .eq('id', orderId)
       .select()
     

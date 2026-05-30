@@ -107,7 +107,7 @@ export default function Checkout() {
           customer_name: formData.fullName,
           customer_phone: formData.phone,
           shipping_address: `${formData.address}, ${formData.city} - ${formData.pincode}`,
-          status: 'pending_verification',
+          status: 'pending',
           loyalty_discount_applied: loyaltyDiscount,
           previous_order_id: isLoyaltyValid ? loyaltyData.previousOrderId : null,
           land_acres: isLoyaltyValid ? parseFloat(loyaltyData.landAcres) : null,
