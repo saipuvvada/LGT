@@ -105,7 +105,7 @@ const Support = () => {
     // 2. Send via FormSubmit AJAX API
     try {
       const endpoint = import.meta.env.DEV
-        ? 'https://formsubmit.co/ajax/saipuvvada12@gmail.com'
+        ? 'https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44'
         : '/api/send-email'
 
       const response = await fetch(endpoint, {

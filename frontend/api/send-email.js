@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   // Fallback to FormSubmit if no Web3Forms key is set
   console.log('Routing email via FormSubmit (Fallback)...');
   try {
-    const response = await fetch('https://formsubmit.co/ajax/saipuvvada12@gmail.com', {
+    const response = await fetch('https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

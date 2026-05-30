@@ -193,7 +193,7 @@ export default function Checkout() {
       let emailSent = false
       try {
         const endpoint = import.meta.env.DEV
-          ? 'https://formsubmit.co/ajax/saipuvvada12@gmail.com'
+          ? 'https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44'
           : '/api/send-email'
 
         const res = await fetch(endpoint, {
