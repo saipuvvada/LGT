@@ -166,6 +166,10 @@ export default function CategoryPage() {
             <div className="products-grid">
               {sortedProducts.map((product) => {
                 const disc = Math.round(100 - (product.price / product.originalPrice) * 100)
+                const inStock = product.stock > 0;
+                const allowProcure = product.allow_dealer_procurement !== false;
+                const isAvailable = inStock || allowProcure;
+
                 return (
                   <div key={product.id} className="product-card">
                     <div className="product-emoji-wrap" style={{ padding: product.image_url ? 0 : 20 }}>
@@ -176,6 +180,15 @@ export default function CategoryPage() {
                       )}
                     </div>
                     <div className="product-brand">{product.brand || product.categories?.name || 'AgroDeals'}</div>
+                    
+                    {inStock ? (
+                      <div className="stock-badge stock-badge--instock">🟢 In Stock</div>
+                    ) : allowProcure ? (
+                      <div className="stock-badge stock-badge--partner">🤝 Available on Order</div>
+                    ) : (
+                      <div className="stock-badge stock-badge--outofstock">🚫 Out of Stock</div>
+                    )}
+
                     <div className="product-name">{product.name}</div>
                     {product.quantity && (
                       <div style={{ fontSize: '12px', color: 'var(--text-light)', marginBottom: '8px', fontWeight: '500' }}>
@@ -193,8 +206,12 @@ export default function CategoryPage() {
                       <option value="2">2 Units</option>
                       <option value="5">5 Units</option>
                     </select>
-                    <button className="btn-add-to-bag" onClick={() => handleAdd(product)}>
-                      ADD TO BAG
+                    <button 
+                      className="btn-add-to-bag" 
+                      onClick={() => handleAdd(product)}
+                      disabled={!isAvailable}
+                    >
+                      {isAvailable ? 'ADD TO BAG' : 'OUT OF STOCK'}
                     </button>
                   </div>
                 )

@@ -21,6 +21,8 @@ function Admin() {
   const [gstRate, setGstRate]     = useState('18')
   const [imageFile, setImageFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [stock, setStock]         = useState('0')
+  const [allowDealerProcurement, setAllowDealerProcurement] = useState(true)
 
   // ── Inline-edit state  (keyed by product id) ──────────────────
   const [editingId, setEditingId]     = useState(null)
@@ -108,6 +110,8 @@ function Admin() {
       hsn_code: hsnCode || null,
       quantity: quantity || null,
       gst_rate: gstRate ? parseInt(gstRate) : 18,
+      stock: stock ? parseInt(stock) : 0,
+      allow_dealer_procurement: allowDealerProcurement,
     }])
 
     setUploading(false)
@@ -116,6 +120,7 @@ function Admin() {
       alert('✅ Product Added!')
       setName(''); setBrand(''); setPrice(''); setCategoryId('')
       setHsnCode(''); setQuantity(''); setGstRate('18'); setImageFile(null)
+      setStock('0'); setAllowDealerProcurement(true)
       e.target.reset()
       fetchProducts()
     }
@@ -140,6 +145,8 @@ function Admin() {
       quantity:    product.quantity    || '',
       gst_rate:    product.gst_rate    ?? 18,
       category_id: product.category_id || '',
+      stock:       product.stock       ?? 0,
+      allow_dealer_procurement: product.allow_dealer_procurement !== false,
     })
   }
   function cancelEdit() { setEditingId(null); setEditFields({}) }
@@ -154,6 +161,8 @@ function Admin() {
       quantity:    editFields.quantity    || null,
       gst_rate:    parseInt(editFields.gst_rate),
       category_id: editFields.category_id || null,
+      stock:       editFields.stock ? parseInt(editFields.stock) : 0,
+      allow_dealer_procurement: editFields.allow_dealer_procurement,
     }).eq('id', id)
     setEditSaving(false)
     if (error) { alert(error.message) }
@@ -287,6 +296,26 @@ function Admin() {
             </div>
           </div>
 
+          {/* Row 4: Stock + Dealer Procurement Sourcing Toggle */}
+          <div style={{ display:'flex', gap:'14px', flexWrap:'wrap', alignItems:'center' }}>
+            <div style={{ flex:'1 1 120px' }}>
+              <label style={labelStyle}>Physical Stock Count</label>
+              <input type="number" min="0" value={stock} onChange={e=>setStock(e.target.value)} style={inputStyle} placeholder="e.g. 10" />
+            </div>
+            <div style={{ flex:'1 1 200px', display:'flex', alignItems:'center', gap:'8px', paddingTop:'18px' }}>
+              <input 
+                type="checkbox" 
+                id="allowDealerProcurement" 
+                checked={allowDealerProcurement} 
+                onChange={e=>setAllowDealerProcurement(e.target.checked)} 
+                style={{ width:'18px', height:'18px', cursor:'pointer' }}
+              />
+              <label htmlFor="allowDealerProcurement" style={{ fontWeight:600, fontSize:'13px', cursor:'pointer', userSelect:'none' }}>
+                🤝 Sourced from other dealers if out of stock
+              </label>
+            </div>
+          </div>
+
           {/* Image */}
           <div>
             <label style={labelStyle}>Product Image</label>
@@ -408,6 +437,20 @@ function Admin() {
                       <span><b>HSN:</b> {product.hsn_code || '—'}</span>
                       <span style={{ marginLeft:'auto' }}><b>GST:</b> {product.gst_rate ?? 18}%</span>
                     </div>
+                    <div style={{ display:'flex', gap:'8px', flexDirection:'column', background:'#f8f9fa', padding:'8px', borderRadius:'6px', fontSize:'12.5px', marginBottom:'12px', border:'1px solid #eef0f2' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span>📦 <b>Stock:</b> {product.stock ?? 0} units</span>
+                        <span style={{ fontWeight:'bold', color: (product.stock ?? 0) > 0 ? '#2d7a4f' : '#e65100' }}>
+                          {(product.stock ?? 0) > 0 ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between', borderTop:'1px dashed #e2e8f0', paddingTop:'4px', marginTop:'4px' }}>
+                        <span>🤝 <b>Dealer Sourcing:</b></span>
+                        <span style={{ fontWeight:'bold', color: product.allow_dealer_procurement !== false ? '#2d7a4f' : '#e53935' }}>
+                          {product.allow_dealer_procurement !== false ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                    </div>
                     <div style={{ display:'flex', gap:'8px' }}>
                       <button
                         onClick={() => startEdit(product)}
@@ -492,6 +535,30 @@ function Admin() {
                         onChange={e => setEditFields(f=>({...f, hsn_code:e.target.value}))}
                         placeholder="e.g. 38089190"
                       />
+                    </div>
+
+                    <div style={{ display:'flex', gap:'8px' }}>
+                      <div style={{ flex:1 }}>
+                        <label style={{ ...labelStyle, fontSize:'11px' }}>Stock</label>
+                        <input
+                          type="number" min="0"
+                          style={{ ...inputStyle, fontSize:'13px', padding:'8px' }}
+                          value={editFields.stock}
+                          onChange={e => setEditFields(f=>({...f, stock:e.target.value}))}
+                        />
+                      </div>
+                      <div style={{ flex:'1 1 auto', display:'flex', alignItems:'center', gap:'6px', paddingTop:'16px' }}>
+                        <input
+                          type="checkbox"
+                          id={`edit_procure_${product.id}`}
+                          checked={editFields.allow_dealer_procurement}
+                          onChange={e => setEditFields(f=>({...f, allow_dealer_procurement:e.target.checked}))}
+                          style={{ width:'16px', height:'16px', cursor:'pointer' }}
+                        />
+                        <label htmlFor={`edit_procure_${product.id}`} style={{ fontWeight:600, fontSize:'11px', cursor:'pointer', userSelect:'none' }}>
+                          🤝 Dealer Sourced
+                        </label>
+                      </div>
                     </div>
 
                     <div>

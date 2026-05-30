@@ -639,6 +639,52 @@ a { text-decoration: none; color: inherit; }
   transform: translateY(-1px);
 }
 .btn-add-to-bag:active { transform: translateY(1px); }
+.btn-add-to-bag:disabled {
+  background: #bdc3c7;
+  color: #7f8c8d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.btn-add-to-bag:disabled:hover {
+  background: #bdc3c7;
+  transform: none;
+}
+
+/* ============================
+   STOCK STATUS BADGES
+   ============================ */
+.stock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.stock-badge--instock {
+  background-color: #e8f5e9;
+  color: #2d7a4f;
+  border: 1px solid rgba(45, 122, 79, 0.2);
+}
+
+.stock-badge--partner {
+  background-color: #fff8e1;
+  color: #b7791f;
+  border: 1px solid rgba(183, 121, 31, 0.2);
+}
+
+.stock-badge--outofstock {
+  background-color: #efebe9;
+  color: #5d4037;
+  border: 1px solid rgba(93, 64, 55, 0.2);
+}
 
 /* ============================
    BRANDS SECTION
