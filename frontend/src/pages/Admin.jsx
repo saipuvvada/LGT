@@ -105,14 +105,18 @@ function Admin() {
   }
 
   async function updateOrderStatus(orderId, newStatus) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('orders')
       .update({ status: newStatus })
       .eq('id', orderId)
+      .select()
     
     if (error) {
-      alert('Error updating status: ' + error.message)
+      alert('❌ Error updating status: ' + error.message)
+    } else if (!data || data.length === 0) {
+      alert('⚠️ Order status could not be updated. This usually happens if your Supabase account is not logged in as an Administrator, or if the RLS policies are not executed yet on your database.')
     } else {
+      alert(`✅ Order status successfully updated to "${newStatus.replace('_', ' ')}"!`)
       fetchOrders()
     }
   }
@@ -754,13 +758,27 @@ function Admin() {
             (() => {
               const filteredOrders = orders.filter(o => {
                 const s = orderSearch.toLowerCase().trim()
-                const matchesSearch = !s || 
+                if (!s) {
+                  return orderStatusFilter === 'all' || 
+                    o.status === orderStatusFilter || 
+                    (orderStatusFilter === 'pending_verification' && o.status === 'pending')
+                }
+
+                const formattedInvoice = `ord-${o.id.substring(0, 8)}`.toLowerCase()
+                const matchesSearch = 
                   o.customer_name?.toLowerCase().includes(s) ||
                   o.customer_phone?.includes(s) ||
                   o.transaction_id?.toLowerCase().includes(s) ||
-                  o.id.toLowerCase().includes(s)
+                  o.id?.toLowerCase().includes(s) ||
+                  formattedInvoice.includes(s) ||
+                  o.order_items?.some(item => 
+                    item.products?.name?.toLowerCase().includes(s) || 
+                    item.products?.brand?.toLowerCase().includes(s)
+                  )
 
-                const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter
+                const matchesStatus = orderStatusFilter === 'all' || 
+                  o.status === orderStatusFilter ||
+                  (orderStatusFilter === 'pending_verification' && o.status === 'pending')
 
                 return matchesSearch && matchesStatus
               })
@@ -780,6 +798,8 @@ function Admin() {
                       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     })
 
+                    const displayStatus = order.status === 'pending' ? 'pending_verification' : order.status
+
                     return (
                       <div key={order.id} className="admin-order-card">
                         <div className="admin-order-header">
@@ -793,7 +813,7 @@ function Admin() {
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <select 
-                              value={order.status}
+                              value={displayStatus}
                               onChange={(e) => updateOrderStatus(order.id, e.target.value)}
                               className="admin-select-status"
                             >
@@ -804,13 +824,13 @@ function Admin() {
                               <option value="cancelled">Cancelled</option>
                             </select>
 
-                            <span className={`admin-status-badge admin-status-badge--${order.status?.split('_')[0]}`}>
-                              {order.status === 'pending_verification' && '⏳ '}
-                              {order.status === 'processing' && '⚙️ '}
-                              {order.status === 'shipped' && '🚚 '}
-                              {order.status === 'delivered' && '✅ '}
-                              {order.status === 'cancelled' && '🚫 '}
-                              {order.status?.replace('_', ' ')}
+                            <span className={`admin-status-badge admin-status-badge--${displayStatus?.split('_')[0]}`}>
+                              {displayStatus === 'pending_verification' && '⏳ '}
+                              {displayStatus === 'processing' && '⚙️ '}
+                              {displayStatus === 'shipped' && '🚚 '}
+                              {displayStatus === 'delivered' && '✅ '}
+                              {displayStatus === 'cancelled' && '🚫 '}
+                              {displayStatus?.replace('_', ' ')}
                             </span>
                           </div>
                         </div>
