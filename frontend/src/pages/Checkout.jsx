@@ -192,9 +192,8 @@ export default function Checkout() {
 
       let emailSent = false
       try {
-        const endpoint = import.meta.env.DEV
-          ? 'https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44'
-          : '/api/send-email'
+        // Always use direct client-side AJAX to ensure proper domain origin is detected and can be activated/verified
+        const endpoint = 'https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44'
 
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -223,7 +222,7 @@ export default function Checkout() {
           })
         })
         const data = await res.json()
-        if (res.ok && (data.success === true || data.success === 'true')) emailSent = true
+        if (res.ok && data && (data.success === true || data.success === 'true')) emailSent = true
       } catch (emailErr) {
         console.warn('Invoice email dispatch failed (non-blocking):', emailErr)
       }

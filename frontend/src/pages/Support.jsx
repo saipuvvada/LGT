@@ -104,9 +104,8 @@ const Support = () => {
 
     // 2. Send via FormSubmit AJAX API
     try {
-      const endpoint = import.meta.env.DEV
-        ? 'https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44'
-        : '/api/send-email'
+      // Always use direct client-side AJAX to ensure proper domain origin is detected and can be activated/verified
+      const endpoint = 'https://formsubmit.co/ajax/6a38a6ee72ec681f80d25d32e01c4d44'
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -127,7 +126,7 @@ const Support = () => {
       });
 
       const resData = await response.json();
-      if (response.ok && (resData.success === true || resData.success === "true")) {
+      if (response.ok && resData && (resData.success === true || resData.success === "true")) {
         emailSent = true;
       }
     } catch (err) {

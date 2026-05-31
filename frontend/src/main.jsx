@@ -20,6 +20,7 @@ import Advisory from './pages/Advisory'
 import Orders from './pages/Orders'
 import Support from './pages/Support'
 import AboutUs from './pages/AboutUs'
+import ProductDetail from './pages/ProductDetail'
 import { CartProvider } from './context/CartContext'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -41,6 +42,7 @@ ReactDOM.createRoot(
         <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutUs /></ProtectedRoute>} />
+        <Route path="/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   </CartProvider>

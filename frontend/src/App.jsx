@@ -155,7 +155,7 @@ function UserMenu({ navigate, user }) {
 }
 
 function ProductCard({ product, handleAdd }) {
-  const originalPrice = Math.round(product.price * 1.3) // Fake original price for UI
+  const originalPrice = Math.round(product.price * 1.3)
   const disc = Math.round(100 - (product.price / originalPrice) * 100)
 
   const inStock = product.stock > 0;
@@ -163,7 +163,12 @@ function ProductCard({ product, handleAdd }) {
   const isAvailable = inStock || allowProcure;
 
   return (
-    <div className="product-card">
+    <div className="product-card" style={{ position: 'relative' }}>
+      <Link
+        to={`/product/${product.id}`}
+        style={{ position: 'absolute', inset: 0, zIndex: 1, borderRadius: '18px' }}
+        aria-label={`View ${product.name} details`}
+      />
       <div className="product-emoji-wrap" style={{ padding: product.image_url ? 0 : 20 }}>
         {product.image_url ? (
           <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
@@ -194,8 +199,9 @@ function ProductCard({ product, handleAdd }) {
       </div>
       <button 
         className="btn-add-to-bag" 
-        onClick={() => handleAdd({ ...product, originalPrice })}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd({ ...product, originalPrice }) }}
         disabled={!isAvailable}
+        style={{ position: 'relative', zIndex: 2 }}
       >
         {isAvailable ? 'ADD TO BAG' : 'OUT OF STOCK'}
       </button>
@@ -372,8 +378,13 @@ export default function App() {
       <header className="header" ref={headerRef}>
         <div className="header-top">
           <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src="/logo.png" alt="AgroDeals Logo" style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1.5px solid rgba(255,255,255,0.2)' }} />
-            AGRO<span>DEALS</span>
+            <span className="logo-leaf" style={{ fontSize: '24px', lineHeight: 1 }}>🌿</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px', lineHeight: 1 }}>
+                AGRO<span className="logo-shimmer">DEALS</span>
+              </span>
+              <span className="logo-tagline">Lakshmi Ganapathi Traders</span>
+            </div>
           </div>
           <div className="header-actions">
             {!isInstalled && (
@@ -461,6 +472,31 @@ export default function App() {
           </div>
           <div className="slide-dots">
             {heroSlides.map((_, i) => <div key={i} className={`dot ${i === slide ? 'active' : ''}`} onClick={() => setSlide(i)} />)}
+          </div>
+        </div>
+
+        {/* Trust Badges — 3D Flip on Hover */}
+        <div style={{ background: 'white', margin: '0 0 4px' }}>
+          <div className="trust-badges-section-title">
+            🏅 Why Farmers Choose Us
+          </div>
+          <div className="trust-badges-row">
+            {[
+              { emoji: '🌾', label: 'Genuine Products', back: '100% authentic agri inputs sourced directly from licensed distributors.' },
+              { emoji: '🚚', label: 'COD Delivery', back: 'Cash on Delivery only. Pay when you verify the product at your doorstep.' },
+              { emoji: '🔬', label: 'Expert Advisory', back: 'Free AI crop consultation and scientific dosage guidance.' },
+              { emoji: '🤝', label: '10+ Yrs Trust', back: 'Serving farmers in Karempudi & Guntur region since 2014.' },
+            ].map((b, i) => (
+              <div key={i} className="trust-badge-card">
+                <div className="trust-badge-inner">
+                  <div className="trust-badge-front">
+                    <span className="trust-badge-emoji">{b.emoji}</span>
+                    <span className="trust-badge-label">{b.label}</span>
+                  </div>
+                  <div className="trust-badge-back">{b.back}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

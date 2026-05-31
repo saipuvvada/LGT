@@ -113,16 +113,14 @@ export default function CategoryPage() {
 
       <main className="page-content">
 
-        {/* Page Title */}
-        <div className="category-page-header">
-          <button className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 5l-7 7 7 7"/>
-            </svg>
-          </button>
-          <div>
-            <div className="category-page-title">{meta.emoji} {meta.label}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-light)', marginTop: 2 }}>{meta.desc}</div>
+        {/* 3D Category Banner */}
+        <div className={`category-3d-banner category-3d-banner--${slug}`}>
+          <div className="category-3d-banner-mesh" />
+          <span className="category-3d-banner-icon">{meta.emoji}</span>
+          <div className="category-3d-banner-title">{meta.label}</div>
+          <div className="category-3d-banner-sub">{meta.desc}</div>
+          <div className="category-3d-banner-count">
+            ✨ {loading ? '...' : `${sortedProducts.length} Products Available`}
           </div>
         </div>
 
@@ -171,7 +169,12 @@ export default function CategoryPage() {
                 const isAvailable = inStock || allowProcure;
 
                 return (
-                  <div key={product.id} className="product-card">
+                  <div key={product.id} className="product-card" style={{ position: 'relative' }}>
+                    <Link
+                      to={`/product/${product.id}`}
+                      style={{ position: 'absolute', inset: 0, zIndex: 1, borderRadius: '18px' }}
+                      aria-label={`View ${product.name} details`}
+                    />
                     <div className="product-emoji-wrap" style={{ padding: product.image_url ? 0 : 20 }}>
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
@@ -200,16 +203,11 @@ export default function CategoryPage() {
                       <span className="price-sale">₹{product.price}</span>
                       {disc > 0 && <span className="discount-badge">{disc}% OFF</span>}
                     </div>
-                    <select className="select-item-dropdown" defaultValue="">
-                      <option value="" disabled>Select item</option>
-                      <option value="1">1 Unit</option>
-                      <option value="2">2 Units</option>
-                      <option value="5">5 Units</option>
-                    </select>
                     <button 
                       className="btn-add-to-bag" 
-                      onClick={() => handleAdd(product)}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(product) }}
                       disabled={!isAvailable}
+                      style={{ position: 'relative', zIndex: 2 }}
                     >
                       {isAvailable ? 'ADD TO BAG' : 'OUT OF STOCK'}
                     </button>
