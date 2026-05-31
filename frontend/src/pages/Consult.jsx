@@ -158,18 +158,7 @@ Keep responses concise, conversational, and highly structured with bullet points
               )}
               <div className={`message-bubble ${msg.role} ${msg.isError ? 'error-bubble' : ''}`}>
                 <div className="message-content">
-                  {msg.content.split('\n').map((line, idx) => {
-                    // Quick styling parser for lists and bold elements
-                    let rendered = line;
-                    if (line.trim().startsWith('*') || line.trim().startsWith('-')) {
-                      return (
-                        <li key={idx} className="parsed-list-item">
-                          {parseBoldMarkdown(line.replace(/^[\*\-\s]+/, ''))}
-                        </li>
-                      );
-                    }
-                    return <p key={idx} className="parsed-paragraph">{parseBoldMarkdown(line)}</p>;
-                  })}
+                  {renderMarkdown(msg.content)}
                 </div>
                 <span className="message-time">
                   {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -231,16 +220,142 @@ Keep responses concise, conversational, and highly structured with bullet points
   );
 };
 
-// Helper utility to parse simple **bold** Markdown strings in-app
-function parseBoldMarkdown(text) {
-  if (!text) return "";
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, index) => {
+// ─── Markdown Renderer ───────────────────────────────────────────────────────
+// Converts AI markdown output into clean structured JSX
+function renderMarkdown(text) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    // Skip empty lines (add small gap)
+    if (!line) {
+      elements.push(<div key={i} style={{ height: '6px' }} />);
+      i++;
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^---+$/.test(line) || /^\*\*\*+$/.test(line)) {
+      elements.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)', margin: '8px 0' }} />);
+      i++;
+      continue;
+    }
+
+    // H1: # Heading
+    if (line.startsWith('# ')) {
+      elements.push(
+        <div key={i} style={{ fontWeight: 800, fontSize: '15px', color: 'var(--green-dark)', marginBottom: '6px', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {parseBold(line.slice(2))}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // H2: ## Heading
+    if (line.startsWith('## ')) {
+      elements.push(
+        <div key={i} style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--green-primary)', marginBottom: '4px', marginTop: '10px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+          {parseBold(line.slice(3))}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // H3: ### Heading
+    if (line.startsWith('### ')) {
+      elements.push(
+        <div key={i} style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-dark)', marginBottom: '4px', marginTop: '8px' }}>
+          {parseBold(line.slice(4))}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // Bullet list: -, *, •
+    if (/^[-*•]\s/.test(line)) {
+      // Collect consecutive bullet lines
+      const bullets = [];
+      while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
+        bullets.push(lines[i].trim().replace(/^[-*•]\s+/, ''));
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} style={{ margin: '6px 0', paddingLeft: '0', listStyle: 'none' }}>
+          {bullets.map((b, bi) => (
+            <li key={bi} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '5px', fontSize: '13.5px', lineHeight: 1.55 }}>
+              <span style={{ color: 'var(--green-primary)', fontWeight: 800, fontSize: '16px', lineHeight: 1, marginTop: '1px', flexShrink: 0 }}>•</span>
+              <span>{parseBold(b)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered list: 1. 2. 3.
+    if (/^\d+\.\s/.test(line)) {
+      const items = [];
+      let num = 1;
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+\.\s+/, ''));
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} style={{ margin: '6px 0', paddingLeft: '0', listStyle: 'none' }}>
+          {items.map((item, ii) => (
+            <li key={ii} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '5px', fontSize: '13.5px', lineHeight: 1.55 }}>
+              <span style={{
+                background: 'var(--green-primary)', color: 'white',
+                borderRadius: '50%', width: '18px', height: '18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '10px', fontWeight: 800, flexShrink: 0, marginTop: '2px'
+              }}>
+                {ii + 1}
+              </span>
+              <span>{parseBold(item)}</span>
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Regular paragraph
+    elements.push(
+      <p key={i} style={{ margin: '3px 0', fontSize: '13.5px', lineHeight: 1.6 }}>
+        {parseBold(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return elements;
+}
+
+// Converts **bold** and *italic* inline markdown to JSX
+function parseBold(text) {
+  if (!text) return '';
+  // Split by **bold** and *italic* patterns
+  const parts = text.split(/(\*\*.*?\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
+      return <strong key={i} style={{ fontWeight: 700, color: 'inherit' }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
     }
     return part;
   });
 }
 
 export default Consult;
+
