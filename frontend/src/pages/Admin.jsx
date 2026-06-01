@@ -42,6 +42,25 @@ function Admin() {
   const [orderStatusFilter, setOrderStatusFilter] = useState('all')
   const [customerSearch, setCustomerSearch] = useState('')
 
+  // ── Mandi form state ───────────────────────────────────────────
+  const [mandiItems, setMandiItems] = useState([])
+  const [mandiCrop, setMandiCrop] = useState('')
+  const [mandiVariety, setMandiVariety] = useState('')
+  const [mandiPrice, setMandiPrice] = useState('')
+  const [mandiChange, setMandiChange] = useState('0')
+  const [mandiMin, setMandiMin] = useState('')
+  const [mandiMax, setMandiMax] = useState('')
+  const [mandiMoisture, setMandiMoisture] = useState('')
+  const [mandiStatus, setMandiStatus] = useState('Stable')
+  const [mandiEmoji, setMandiEmoji] = useState('🌾')
+  const [mandiDesc, setMandiDesc] = useState('')
+  const [loadingMandi, setLoadingMandi] = useState(false)
+  const [mandiSaving, setMandiSaving] = useState(false)
+
+  // ── Mandi Inline Edit state ─────────────────────────────────────
+  const [editingMandiId, setEditingMandiId] = useState(null)
+  const [editMandiFields, setEditMandiFields] = useState({})
+
   // ── Auth Diagnostics State ────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null)
   const [dbAdminStatus, setDbAdminStatus] = useState(null)
@@ -83,6 +102,8 @@ function Admin() {
         fetchOrders()
       } else if (activeTab === 'customers') {
         fetchCustomers()
+      } else if (activeTab === 'mandi') {
+        fetchMandiRates()
       }
     }
   }, [isAuthorized, activeTab])
@@ -227,6 +248,114 @@ function Admin() {
       .eq('is_active', true)
       .order('created_at', { ascending: false })
     if (!error) setProducts(data)
+  }
+
+  async function fetchMandiRates() {
+    setLoadingMandi(true)
+    const { data, error } = await supabase
+      .from('mandi_rates')
+      .select('*')
+      .order('crop_name', { ascending: true })
+    if (!error && data) {
+      setMandiItems(data)
+    } else if (error) {
+      console.error('Error fetching mandi rates:', error)
+    }
+    setLoadingMandi(false)
+  }
+
+  async function addMandiRate(e) {
+    e.preventDefault()
+    if (!mandiCrop || !mandiVariety || !mandiPrice) return alert('Crop name, variety, and price are required')
+    setMandiSaving(true)
+    
+    const val = parseFloat(mandiPrice)
+    const initialHistory = [val, val, val, val, val, val, val]
+
+    const { error } = await supabase.from('mandi_rates').insert([{
+      crop_name: mandiCrop,
+      variety: mandiVariety,
+      price_per_quintal: val,
+      price_change: parseFloat(mandiChange || 0),
+      min_price: mandiMin ? parseFloat(mandiMin) : val,
+      max_price: mandiMax ? parseFloat(mandiMax) : val,
+      moisture_standard: mandiMoisture || null,
+      market_status: mandiStatus,
+      emoji: mandiEmoji,
+      description: mandiDesc || null,
+      historical_prices: initialHistory
+    }])
+
+    setMandiSaving(false)
+    if (error) {
+      alert('Error adding mandi rate: ' + error.message)
+    } else {
+      alert('✅ Mandi Rate Added!')
+      setMandiCrop(''); setMandiVariety(''); setMandiPrice(''); setMandiChange('0')
+      setMandiMin(''); setMandiMax(''); setMandiMoisture(''); setMandiStatus('Stable')
+      setMandiEmoji('🌾'); setMandiDesc('')
+      fetchMandiRates()
+    }
+  }
+
+  async function deleteMandiRate(id) {
+    if (!window.confirm('Delete this Mandi rate record?')) return
+    const { error } = await supabase.from('mandi_rates').delete().eq('id', id)
+    if (!error) fetchMandiRates()
+    else alert('Error deleting: ' + error.message)
+  }
+
+  function startMandiEdit(item) {
+    setEditingMandiId(item.id)
+    setEditMandiFields({
+      crop_name: item.crop_name,
+      variety: item.variety,
+      price_per_quintal: item.price_per_quintal,
+      price_change: item.price_change ?? 0,
+      min_price: item.min_price ?? item.price_per_quintal,
+      max_price: item.max_price ?? item.price_per_quintal,
+      moisture_standard: item.moisture_standard || '',
+      market_status: item.market_status || 'Stable',
+      emoji: item.emoji || '🌾',
+      description: item.description || ''
+    })
+  }
+
+  function cancelMandiEdit() {
+    setEditingMandiId(null)
+    setEditMandiFields({})
+  }
+
+  async function saveMandiEdit(id, oldHistory) {
+    setMandiSaving(true)
+    
+    let newHistory = Array.isArray(oldHistory) ? [...oldHistory] : []
+    if (newHistory.length >= 7) {
+      newHistory.shift()
+    }
+    newHistory.push(parseFloat(editMandiFields.price_per_quintal))
+
+    const { error } = await supabase.from('mandi_rates').update({
+      crop_name: editMandiFields.crop_name,
+      variety: editMandiFields.variety,
+      price_per_quintal: parseFloat(editMandiFields.price_per_quintal),
+      price_change: parseFloat(editMandiFields.price_change || 0),
+      min_price: parseFloat(editMandiFields.min_price),
+      max_price: parseFloat(editMandiFields.max_price),
+      moisture_standard: editMandiFields.moisture_standard || null,
+      market_status: editMandiFields.market_status,
+      emoji: editMandiFields.emoji,
+      description: editMandiFields.description || null,
+      historical_prices: newHistory
+    }).eq('id', id)
+
+    setMandiSaving(false)
+    if (error) {
+      alert('Error saving mandi edit: ' + error.message)
+    } else {
+      cancelMandiEdit()
+      fetchMandiRates()
+    }
   }
 
   // ── Add product ────────────────────────────────────────────────
@@ -436,6 +565,12 @@ function Admin() {
           onClick={() => setActiveTab('customers')}
         >
           👥 Customers Directory
+        </button>
+        <button 
+          className={`admin-tab-btn ${activeTab === 'mandi' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('mandi')}
+        >
+          📈 Mandi Rates Manager
         </button>
       </div>
 
@@ -1125,6 +1260,318 @@ function Admin() {
             })()
           )}
         </div>
+      )}
+
+      {/* ── MANDI RATES TAB CONTENT ───────────────────────────── */}
+      {activeTab === 'mandi' && (
+        <>
+          {/* Add Mandi Rate Form */}
+          <div style={{ background:'white', padding:'24px', borderRadius:'12px', boxShadow:'0 4px 12px rgba(0,0,0,0.08)', marginBottom:'32px' }}>
+            <h2 style={{ margin:'0 0 20px', fontSize:'17px', fontWeight:800 }}>➕ Add New Mandi Rate Record</h2>
+
+            <form onSubmit={addMandiRate} style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+              {/* Row 1: Crop Name + Variety */}
+              <div style={{ display:'flex', gap:'14px', flexWrap:'wrap' }}>
+                <div style={{ flex:'1 1 200px' }}>
+                  <label style={labelStyle}>Crop Name (with Telugu text optionally) *</label>
+                  <input type="text" value={mandiCrop} onChange={e=>setMandiCrop(e.target.value)} style={inputStyle} placeholder="e.g. Chilli (మిర్చి)" required />
+                </div>
+                <div style={{ flex:'1 1 160px' }}>
+                  <label style={labelStyle}>Crop Variety *</label>
+                  <input type="text" value={mandiVariety} onChange={e=>setMandiVariety(e.target.value)} style={inputStyle} placeholder="e.g. Guntur Teja (S17)" required />
+                </div>
+              </div>
+
+              {/* Row 2: Price + Change + Emoji */}
+              <div style={{ display:'flex', gap:'14px', flexWrap:'wrap' }}>
+                <div style={{ flex:'1 1 120px' }}>
+                  <label style={labelStyle}>Price Per Quintal (₹) *</label>
+                  <input type="number" min="0" step="0.01" value={mandiPrice} onChange={e=>setMandiPrice(e.target.value)} style={inputStyle} required />
+                </div>
+                <div style={{ flex:'1 1 120px' }}>
+                  <label style={labelStyle}>Daily Change (₹)</label>
+                  <input type="number" step="0.1" value={mandiChange} onChange={e=>setMandiChange(e.target.value)} style={inputStyle} />
+                </div>
+                <div style={{ flex:'1 1 80px' }}>
+                  <label style={labelStyle}>Crop Emoji</label>
+                  <select value={mandiEmoji} onChange={e=>setMandiEmoji(e.target.value)} style={inputStyle}>
+                    <option value="🌶️">🌶️ Chilli</option>
+                    <option value="🌾">🌾 Cotton / Grain</option>
+                    <option value="🍚">🍚 Paddy / Rice</option>
+                    <option value="🌽">🌽 Maize / Corn</option>
+                    <option value="🌱">🌱 Turmeric / General</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Min Price + Max Price + Moisture */}
+              <div style={{ display:'flex', gap:'14px', flexWrap:'wrap' }}>
+                <div style={{ flex:'1 1 120px' }}>
+                  <label style={labelStyle}>Min Price (₹)</label>
+                  <input type="number" min="0" value={mandiMin} onChange={e=>setMandiMin(e.target.value)} style={inputStyle} />
+                </div>
+                <div style={{ flex:'1 1 120px' }}>
+                  <label style={labelStyle}>Max Price (₹)</label>
+                  <input type="number" min="0" value={mandiMax} onChange={e=>setMandiMax(e.target.value)} style={inputStyle} />
+                </div>
+                <div style={{ flex:'1 1 160px' }}>
+                  <label style={labelStyle}>Moisture Standard</label>
+                  <input type="text" value={mandiMoisture} onChange={e=>setMandiMoisture(e.target.value)} style={inputStyle} placeholder="e.g. < 10%" />
+                </div>
+                <div style={{ flex:'1 1 100px' }}>
+                  <label style={labelStyle}>Market Status</label>
+                  <select value={mandiStatus} onChange={e=>setMandiStatus(e.target.value)} style={inputStyle}>
+                    <option value="Bullish">📈 Bullish (Upward)</option>
+                    <option value="Bearish">📉 Bearish (Downward)</option>
+                    <option value="Stable">⚖️ Stable</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={labelStyle}>Market Grade Description</label>
+                <textarea 
+                  value={mandiDesc} 
+                  onChange={e=>setMandiDesc(e.target.value)} 
+                  style={{ ...inputStyle, height: '80px', resize: 'vertical' }} 
+                  placeholder="Creative description of grade quality, export demand, and local market yard trends..." 
+                />
+              </div>
+
+              <button type="submit" disabled={mandiSaving} style={{
+                padding:'12px', background: mandiSaving ? '#aaa' : '#2d7a4f', color:'white',
+                border:'none', borderRadius:'8px', cursor: mandiSaving ? 'not-allowed' : 'pointer',
+                fontWeight:'bold', fontSize:'15px'
+              }}>
+                {mandiSaving ? '⏳ Saving...' : '✅ Save Mandi Record'}
+              </button>
+            </form>
+          </div>
+
+          {/* Mandi Rates List */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
+            <h2 style={{ margin:0, fontSize:'17px', fontWeight:800 }}>📈 Current Mandi Rates ({mandiItems.length})</h2>
+          </div>
+
+          {loadingMandi ? (
+            <div style={{ padding: '30px 0', textAlign: 'center', color: '#666' }}>
+              <div className="typing-indicator" style={{ justifyContent: 'center', marginBottom: '10px' }}>
+                <span></span><span></span><span></span>
+              </div>
+              Loading Mandi records...
+            </div>
+          ) : mandiItems.length === 0 ? (
+            <div style={{ background:'white', padding:'30px', textAlign:'center', borderRadius:'12px', border:'1px solid #eee', color:'#888' }}>
+              No Mandi rates found in database. Create one using the form above!
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+              {mandiItems.map((item) => {
+                const isMandiEditing = editingMandiId === item.id;
+                return (
+                  <div key={item.id} style={{
+                    background:'white', border: isMandiEditing ? '2px solid #2d7a4f' : '1px solid #eee',
+                    borderRadius:'12px', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)'
+                  }}>
+                    {!isMandiEditing ? (
+                      /* View Layout */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '24px' }}>{item.emoji}</span>
+                            <div>
+                              <strong style={{ fontSize: '15px' }}>{item.crop_name}</strong> - <span>{item.variety}</span>
+                            </div>
+                          </div>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            fontWeight: 'bold', 
+                            color: item.market_status === 'Bullish' ? '#047857' : item.market_status === 'Bearish' ? '#b91c1c' : '#475569',
+                            background: item.market_status === 'Bullish' ? '#ecfdf5' : item.market_status === 'Bearish' ? '#fef2f2' : '#f1f5f9',
+                            padding: '3px 8px',
+                            borderRadius: '12px'
+                          }}>
+                            {item.market_status}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '14px', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Rate Per Quintal</span>
+                            <strong style={{ fontSize: '16px', color: 'var(--green-primary)' }}>₹{item.price_per_quintal}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Daily Change</span>
+                            <strong style={{ fontSize: '14px', color: item.price_change >= 0 ? '#10b981' : '#ef4444' }}>
+                              {item.price_change >= 0 ? '+' : ''}{item.price_change}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Range (Min–Max)</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600 }}>₹{item.min_price} – ₹{item.max_price}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Moisture Standard</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600 }}>{item.moisture_standard || 'N/A'}</span>
+                          </div>
+                        </div>
+
+                        {item.description && (
+                          <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0' }}>
+                            💡 <em>{item.description}</em>
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '4px', borderTop: '1px solid #f5f5f5', paddingTop: '10px' }}>
+                          <button
+                            onClick={() => startMandiEdit(item)}
+                            style={{ padding: '6px 12px', fontSize: '12.5px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            ✏️ Edit Record
+                          </button>
+                          <button
+                            onClick={() => deleteMandiRate(item.id)}
+                            style={{ padding: '6px 12px', fontSize: '12.5px', background: '#fca5a5', color: '#991b1b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: 'auto' }}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Inline Edit Layout */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ background: '#f0faf4', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', color: '#2d7a4f', fontWeight: 'bold' }}>
+                          ✏️ Editing Mandi Record
+                        </div>
+
+                        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Crop Name</label>
+                            <input
+                              style={inputStyle}
+                              value={editMandiFields.crop_name}
+                              onChange={e => setEditMandiFields(f=>({...f, crop_name:e.target.value}))}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Variety</label>
+                            <input
+                              style={inputStyle}
+                              value={editMandiFields.variety}
+                              onChange={e => setEditMandiFields(f=>({...f, variety:e.target.value}))}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Price Per Quintal (₹)</label>
+                            <input
+                              type="number"
+                              style={inputStyle}
+                              value={editMandiFields.price_per_quintal}
+                              onChange={e => setEditMandiFields(f=>({...f, price_per_quintal:e.target.value}))}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Daily Change (₹)</label>
+                            <input
+                              type="number"
+                              style={inputStyle}
+                              value={editMandiFields.price_change}
+                              onChange={e => setEditMandiFields(f=>({...f, price_change:e.target.value}))}
+                            />
+                          </div>
+                          <div style={{ flex: '0 0 80px' }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Emoji</label>
+                            <select
+                              style={inputStyle}
+                              value={editMandiFields.emoji}
+                              onChange={e => setEditMandiFields(f=>({...f, emoji:e.target.value}))}
+                            >
+                              <option value="🌶️">🌶️ Chilli</option>
+                              <option value="🌾">🌾 Cotton</option>
+                              <option value="🍚">🍚 Paddy</option>
+                              <option value="🌽">🌽 Maize</option>
+                              <option value="🌱">🌱 Turmeric</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Min Price (₹)</label>
+                            <input
+                              type="number"
+                              style={inputStyle}
+                              value={editMandiFields.min_price}
+                              onChange={e => setEditMandiFields(f=>({...f, min_price:e.target.value}))}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Max Price (₹)</label>
+                            <input
+                              type="number"
+                              style={inputStyle}
+                              value={editMandiFields.max_price}
+                              onChange={e => setEditMandiFields(f=>({...f, max_price:e.target.value}))}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Moisture Standard</label>
+                            <input
+                              style={inputStyle}
+                              value={editMandiFields.moisture_standard}
+                              onChange={e => setEditMandiFields(f=>({...f, moisture_standard:e.target.value}))}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ ...labelStyle, fontSize: '11px' }}>Market Status</label>
+                            <select
+                              style={inputStyle}
+                              value={editMandiFields.market_status}
+                              onChange={e => setEditMandiFields(f=>({...f, market_status:e.target.value}))}
+                            >
+                              <option value="Bullish">Bullish</option>
+                              <option value="Bearish">Bearish</option>
+                              <option value="Stable">Stable</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '11px' }}>Market Grade Description</label>
+                          <textarea
+                            style={{ ...inputStyle, height: '60px', resize: 'vertical' }}
+                            value={editMandiFields.description}
+                            onChange={e => setEditMandiFields(f=>({...f, description:e.target.value}))}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                          <button
+                            onClick={() => saveMandiEdit(item.id, item.historical_prices)}
+                            disabled={mandiSaving}
+                            style={{ flex:1, padding:'8px 16px', background: mandiSaving ? '#aaa' : '#2d7a4f', color:'white', border:'none', borderRadius:'4px', cursor: mandiSaving ? 'not-allowed' : 'pointer', fontWeight:'bold', fontSize:'13px' }}
+                          >
+                            {mandiSaving ? '⏳ Saving...' : '💾 Save Changes'}
+                          </button>
+                          <button
+                            onClick={cancelMandiEdit}
+                            style={{ padding:'8px 16px', background:'#f1f5f9', color:'#475569', border:'none', borderRadius:'4px', cursor:'pointer', fontWeight:'bold', fontSize:'13px' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

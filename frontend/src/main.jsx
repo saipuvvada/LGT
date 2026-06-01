@@ -21,6 +21,7 @@ import Orders from './pages/Orders'
 import Support from './pages/Support'
 import AboutUs from './pages/AboutUs'
 import ProductDetail from './pages/ProductDetail'
+import MandiRates from './pages/MandiRates'
 import { CartProvider } from './context/CartContext'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -39,6 +40,7 @@ ReactDOM.createRoot(
         <Route path="/category/:slug" element={<ProtectedRoute><CategoryPage /></ProtectedRoute>} />
         <Route path="/consult" element={<ProtectedRoute><Consult /></ProtectedRoute>} />
         <Route path="/advisory" element={<ProtectedRoute><Advisory /></ProtectedRoute>} />
+        <Route path="/mandi" element={<ProtectedRoute><MandiRates /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutUs /></ProtectedRoute>} />

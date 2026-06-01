@@ -221,6 +221,7 @@ export default function App() {
 
   const [products, setProducts] = useState([])
   const [selectedBrand, setSelectedBrand] = useState(null)
+  const [mandiRates, setMandiRates] = useState([])
   const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt || null)
   const [isInstalled, setIsInstalled] = useState(
     () => window.matchMedia('(display-mode: standalone)').matches || 
@@ -235,6 +236,7 @@ export default function App() {
   useEffect(() => {
     if (headerRef.current) setHeaderH(headerRef.current.offsetHeight)
     fetchProducts()
+    fetchMandiRates()
 
     // Auth: get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -312,6 +314,31 @@ export default function App() {
       .limit(100)
     
     if (data) setProducts(data)
+  }
+
+  async function fetchMandiRates() {
+    try {
+      const { data } = await supabase
+        .from('mandi_rates')
+        .select('crop_name, variety, price_per_quintal, price_change, emoji')
+        .order('crop_name', { ascending: true })
+
+      if (data && data.length > 0) {
+        setMandiRates(data)
+      } else {
+        setMandiRates([
+          { crop_name: 'Chilli (మిర్చి)', variety: 'Guntur Teja (S17)', price_per_quintal: 18500, price_change: 250, emoji: '🌶️' },
+          { crop_name: 'Cotton (పత్తి)', variety: 'Bunny / Brahma', price_per_quintal: 7600, price_change: -100, emoji: '🌾' },
+          { crop_name: 'Paddy (వరి)', variety: 'Sona Masuri (BPT 5204)', price_per_quintal: 2800, price_change: 50, emoji: '🍚' }
+        ])
+      }
+    } catch (e) {
+      setMandiRates([
+        { crop_name: 'Chilli (మిర్చి)', variety: 'Guntur Teja (S17)', price_per_quintal: 18500, price_change: 250, emoji: '🌶️' },
+        { crop_name: 'Cotton (పత్తి)', variety: 'Bunny / Brahma', price_per_quintal: 7600, price_change: -100, emoji: '🌾' },
+        { crop_name: 'Paddy (వరి)', variety: 'Sona Masuri (BPT 5204)', price_per_quintal: 2800, price_change: 50, emoji: '🍚' }
+      ])
+    }
   }
 
   const showToast = (name) => {
@@ -436,6 +463,53 @@ export default function App() {
       </header>
 
       <main className="page-content" style={{ paddingTop: headerH + 8 }}>
+        {/* Live Mandi Rates Marquee Ticker */}
+        {mandiRates.length > 0 && (
+          <div 
+            onClick={() => navigate('/mandi')}
+            style={{
+              background: 'linear-gradient(90deg, #1b5e20 0%, #2e7d32 100%)',
+              color: 'white',
+              margin: '0 16px 14px 16px',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 12px rgba(46, 125, 50, 0.12)'
+            }}
+          >
+            <span style={{ fontSize: '10px', fontWeight: 800, background: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+              📊 GUNTUR APMC
+            </span>
+            <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              <div style={{ display: 'inline-block', animation: 'marqueeScroll 22s linear infinite', fontSize: '12.5px', fontWeight: 700 }}>
+                {mandiRates.map((item, idx) => {
+                  const change = parseFloat(item.price_change || 0);
+                  const sign = change >= 0 ? '▲' : '▼';
+                  return (
+                    <span key={idx} style={{ marginRight: '28px' }}>
+                      {item.emoji} {item.crop_name}: <strong>₹{parseFloat(item.price_per_quintal).toLocaleString('en-IN')}</strong>{' '}
+                      <span style={{ color: change >= 0 ? '#80e27e' : '#ff7961', fontSize: '11px', marginLeft: '3px' }}>
+                        {sign} {change >= 0 ? '+' : ''}{change}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Keyframes Styles for Marquee Animation */}
+        <style>{`
+          @keyframes marqueeScroll {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+          }
+        `}</style>
         <div className="category-tabs">
           {categories.map((cat) => (
             <div key={cat.id} className="cat-tab" onClick={() => navigate(cat.path)}>
