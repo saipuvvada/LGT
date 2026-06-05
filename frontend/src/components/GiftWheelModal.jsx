@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import './GiftWheel.css';
 
@@ -15,6 +16,7 @@ const prizes = [
 ];
 
 export default function GiftWheelModal({ user, onClose, onVoucherClaimed }) {
+  const navigate = useNavigate();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -208,7 +210,40 @@ export default function GiftWheelModal({ user, onClose, onVoucherClaimed }) {
           ✕
         </button>
 
-        {!result ? (
+        {!user ? (
+          <div style={{ padding: '20px 0' }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎡</div>
+            <h3 style={{ margin: '0 0 10px', fontSize: '20px', fontWeight: '800', color: '#ffe082' }}>
+              Lucky Spin Wheel
+            </h3>
+            <p style={{ margin: '0 0 24px', fontSize: '13.5px', color: '#a5d6a7', lineHeight: '1.5' }}>
+              Join AgroDeals to spin the lucky wheel and win up to **₹250 cash discount** stored directly in your wallet!
+            </p>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/login');
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'linear-gradient(135deg, #ffd54f 0%, #ffb300 100%)',
+                color: '#1a2e22',
+                border: 'none',
+                borderRadius: '12px',
+                fontWeight: '900',
+                fontSize: '15px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(255, 179, 0, 0.3)',
+                transition: 'all 0.2s',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+            >
+              🔑 Login to Spin & Win
+            </button>
+          </div>
+        ) : !result ? (
           <>
             <h3 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: '800', color: '#ffe082' }}>
               🎡 Lucky Spin Wheel
@@ -246,12 +281,6 @@ export default function GiftWheelModal({ user, onClose, onVoucherClaimed }) {
             {error && (
               <div style={{ color: '#ef5350', fontSize: '12px', fontWeight: 'bold', margin: '8px 0' }}>
                 ⚠️ {error}
-              </div>
-            )}
-
-            {!user && (
-              <div style={{ fontSize: '11px', color: '#ffd54f', background: 'rgba(255, 213, 79, 0.1)', padding: '6px', borderRadius: '6px', marginBottom: '12px', fontWeight: 600 }}>
-                💡 Preview Mode: Login to save your claimed voucher code to your account.
               </div>
             )}
 
@@ -294,12 +323,6 @@ export default function GiftWheelModal({ user, onClose, onVoucherClaimed }) {
                 {copied ? '✅ Copied!' : '📋 Copy Code'}
               </button>
             </div>
-
-            {result.isFallback && (
-              <div style={{ fontSize: '11px', color: '#ffe082', margin: '-10px 0 20px', lineHeight: 1.4, opacity: 0.85 }}>
-                ⚠️ <em>Saved to this device. Please write this code down to apply it on your checkout.</em>
-              </div>
-            )}
 
             <button
               onClick={onClose}

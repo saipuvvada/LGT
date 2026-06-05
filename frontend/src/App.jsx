@@ -342,6 +342,7 @@ export default function App() {
 
           if (voucherData && voucherData.length > 0) {
             setIsWheelEligible(false);
+            localStorage.setItem('agrodeals-voucher-claimed-status', 'true');
             return;
           }
 
