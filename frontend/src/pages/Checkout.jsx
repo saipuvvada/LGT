@@ -24,10 +24,31 @@ export default function Checkout() {
     cropType: '',
     medicinesUsed: ''
   })
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [useWallet, setUseWallet] = useState(false)
 
   useEffect(() => {
     fetchPastOrders()
+    fetchWalletBalance()
   }, [])
+
+  const fetchWalletBalance = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('wallet_balance')
+          .eq('id', session.user.id)
+          .single()
+        if (!error && data) {
+          setWalletBalance(parseFloat(data.wallet_balance || 0))
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching wallet balance:', err)
+    }
+  }
 
   const fetchPastOrders = async () => {
     try {
@@ -71,7 +92,11 @@ export default function Checkout() {
     ? parseFloat((baseTotal * 0.10).toFixed(2)) 
     : 0.00;
 
-  const grandTotal = parseFloat((baseTotal - loyaltyDiscount).toFixed(2))
+  const walletDiscountApplied = useWallet 
+    ? parseFloat(Math.min(walletBalance, baseTotal - loyaltyDiscount).toFixed(2)) 
+    : 0.00;
+
+  const grandTotal = parseFloat((baseTotal - loyaltyDiscount - walletDiscountApplied).toFixed(2))
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -110,6 +135,7 @@ export default function Checkout() {
           shipping_address: `${formData.address}, ${formData.city} - ${formData.pincode}`,
           status: 'pending_verification',
           loyalty_discount_applied: loyaltyDiscount,
+          wallet_discount_applied: walletDiscountApplied,
           previous_order_id: isLoyaltyValid ? loyaltyData.previousOrderId : null,
           land_acres: isLoyaltyValid ? parseFloat(loyaltyData.landAcres) : null,
           crop_type: isLoyaltyValid ? loyaltyData.cropType : null,
@@ -154,6 +180,16 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError
 
+      // Deduct used wallet balance
+      if (walletDiscountApplied > 0) {
+        const { error: walletError } = await supabase
+          .from('profiles')
+          .update({ wallet_balance: parseFloat((walletBalance - walletDiscountApplied).toFixed(2)) })
+          .eq('id', userId)
+
+        if (walletError) throw walletError
+      }
+
       // 4. Fire invoice email to saipuvvada12@gmail.com via FormSubmit
       const invoiceNo = `INV-${order.id.substring(0, 8).toUpperCase()}`
       const itemLines = itemsWithGst.map((item, i) =>
@@ -185,6 +221,7 @@ export default function Checkout() {
         `CGST:                 ₹${cgst.toFixed(2)}\n` +
         `SGST:                 ₹${sgst.toFixed(2)}\n` +
         (loyaltyDiscount > 0 ? `Loyalty Discount (10%): -₹${loyaltyDiscount.toFixed(2)}\n` : '') +
+        (walletDiscountApplied > 0 ? `Wallet Discount:      -₹${walletDiscountApplied.toFixed(2)}\n` : '') +
         `Grand Total (COD):    ₹${grandTotal.toFixed(2)}\n\n` +
         `══════════════════════════════════\n` +
         `Lakshmi Ganapathi Traders — AgroDeals\n` +
@@ -211,6 +248,7 @@ export default function Checkout() {
             CGST:          `₹${cgst.toFixed(2)}`,
             SGST:          `₹${sgst.toFixed(2)}`,
             Loyalty_Discount: loyaltyDiscount > 0 ? `-₹${loyaltyDiscount.toFixed(2)}` : '₹0.00',
+            Wallet_Discount: walletDiscountApplied > 0 ? `-₹${walletDiscountApplied.toFixed(2)}` : '₹0.00',
             Grand_Total:   `₹${grandTotal.toFixed(2)}`,
             Loyalty_Claimed: isLoyaltyValid ? 'Yes' : 'No',
             Land_Acres:    isLoyaltyValid ? `${loyaltyData.landAcres} Acres` : 'N/A',
@@ -234,7 +272,7 @@ export default function Checkout() {
           orderId: order.id,
           customerDetails: formData,
           items: itemsWithGst,
-          totals: { subtotal, cgst, sgst, totalGst, grandTotal, loyaltyDiscount },
+          totals: { subtotal, cgst, sgst, totalGst, grandTotal, loyaltyDiscount, walletDiscountApplied },
           emailSent,
         }
       })
@@ -283,6 +321,29 @@ export default function Checkout() {
             </div>
           </form>
         </div>
+
+        {/* AgroDeals Wallet Section */}
+        {walletBalance > 0 && (
+          <div style={{ background: '#f0faf4', border: '1.5px solid #a7f3d0', padding: '16px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <h3 style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, color: '#2d7a4f', fontSize: '15px' }}>
+              💰 AgroDeals Wallet Balance
+            </h3>
+            <p style={{ fontSize: 13, color: '#444', marginBottom: 12, lineHeight: 1.4 }}>
+              You have **₹{walletBalance}** in your wallet from your Lucky Wheel spin! Apply it to get an instant discount on your order.
+            </p>
+            <label className="loyalty-checkbox-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={useWallet}
+                onChange={(e) => setUseWallet(e.target.checked)}
+                style={{ width: 18, height: 18, cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#1b5e20' }}>
+                Apply Wallet Discount (-₹{parseFloat(Math.min(walletBalance, baseTotal - loyaltyDiscount).toFixed(2))})
+              </span>
+            </label>
+          </div>
+        )}
 
         {/* Farmer Loyalty Discount Section */}
         <div className="loyalty-section">
@@ -431,6 +492,13 @@ export default function Checkout() {
             <div className="discount-row-green">
               <span>Loyalty Discount (10% Off)</span>
               <span>-₹{loyaltyDiscount.toFixed(2)}</span>
+            </div>
+          )}
+
+          {walletDiscountApplied > 0 && (
+            <div className="discount-row-green" style={{ color: '#2d7a4f', fontWeight: 'bold' }}>
+              <span>Wallet Discount Applied</span>
+              <span>-₹{walletDiscountApplied.toFixed(2)}</span>
             </div>
           )}
           

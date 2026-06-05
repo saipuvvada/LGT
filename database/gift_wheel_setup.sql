@@ -17,9 +17,11 @@ CREATE TABLE IF NOT EXISTS public.campaign_vouchers (
 -- Enable RLS
 ALTER TABLE public.campaign_vouchers ENABLE ROW LEVEL SECURITY;
 
+-- Add wallet fields to profiles and orders tables
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC DEFAULT 0.00;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS wallet_discount_applied NUMERIC DEFAULT 0.00;
+
 -- Setup RLS Policies
--- Only authenticated users can read their own claimed vouchers
--- Admins can view/edit everything
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -49,6 +51,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 3. Stored procedure to seed the campaign vouchers pool (100 total: 90 low, 10 high)
+-- Set with SECURITY DEFINER to execute with superuser privileges (bypassing RLS during insertion)
 CREATE OR REPLACE FUNCTION public.seed_first_order_wheel_campaign() 
 RETURNS VOID AS $$
 DECLARE
@@ -76,12 +79,13 @@ BEGIN
     END LOOP;
   END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Run the seeder
 SELECT public.seed_first_order_wheel_campaign();
 
 -- 4. Allocation database function to claim a voucher securely
+-- Set with SECURITY DEFINER to bypass RLS blocks
 CREATE OR REPLACE FUNCTION public.claim_first_order_voucher(user_uuid UUID)
 RETURNS TABLE (voucher_code TEXT, voucher_amount INT) AS $$
 DECLARE
@@ -91,7 +95,7 @@ DECLARE
   sel_code TEXT;
   sel_amount INT;
 BEGIN
-  -- Verify user exists and is eligible (0 orders)
+  -- Verify user exists and is eligible (0 orders in orders table)
   SELECT COUNT(*) INTO order_count FROM public.orders WHERE user_id = user_uuid;
   IF order_count > 0 THEN
     RAISE EXCEPTION 'User has already placed an order and is not eligible.';
@@ -125,9 +129,14 @@ BEGIN
       claimed_at = NOW()
   WHERE id = selected_id;
 
+  -- Add the claimed amount to the user's wallet_balance
+  UPDATE public.profiles
+  SET wallet_balance = COALESCE(wallet_balance, 0) + sel_amount
+  WHERE id = user_uuid;
+
   -- Return the values
   voucher_code := sel_code;
   voucher_amount := sel_amount;
   RETURN NEXT;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

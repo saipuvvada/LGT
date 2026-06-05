@@ -221,6 +221,12 @@ export default function OrderSuccess() {
                     </>
                   )
                 })()}
+                {totals.loyaltyDiscount > 0 && (
+                  <Row label="Loyalty Discount (10% Off)" value={`-₹${totals.loyaltyDiscount.toFixed(2)}`} />
+                )}
+                {totals.walletDiscountApplied > 0 && (
+                  <Row label="Wallet Discount Applied" value={`-₹${totals.walletDiscountApplied.toFixed(2)}`} />
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #1a3a2a', paddingTop: 8, marginTop: 8, fontWeight: 800, fontSize: 14, color: '#1a3a2a' }}>
                   <span>Grand Total</span>
                   <span>₹{totals.grandTotal.toFixed(2)}</span>
