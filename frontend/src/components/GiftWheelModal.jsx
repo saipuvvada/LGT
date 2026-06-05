@@ -98,8 +98,13 @@ export default function GiftWheelModal({ user, onClose, onVoucherClaimed }) {
         });
 
         if (rpcError) {
-          // If stored procedure doesn't exist yet (42883) or other setup error, trigger fallback
-          if (rpcError.code === '42883' || rpcError.message?.includes('does not exist')) {
+          const isMissingFunc = 
+            rpcError.code === '42883' || 
+            rpcError.code === 'PGRST202' ||
+            rpcError.message?.toLowerCase().includes('does not exist') ||
+            rpcError.message?.toLowerCase().includes('schema cache');
+
+          if (isMissingFunc) {
             console.warn('claim_first_order_voucher RPC not found in database. Using client-side fallback simulation.');
             isFallback = true;
           } else {
