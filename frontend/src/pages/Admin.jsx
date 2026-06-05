@@ -28,6 +28,7 @@ function Admin() {
   const [editingId, setEditingId]     = useState(null)
   const [editFields, setEditFields]   = useState({})
   const [editSaving, setEditSaving]   = useState(false)
+  const [editImageFile, setEditImageFile] = useState(null)
 
   // ── Search filter state ────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -421,12 +422,30 @@ function Admin() {
       category_id: product.category_id || '',
       stock:       product.stock       ?? 0,
       allow_dealer_procurement: product.allow_dealer_procurement !== false,
+      image_url:   product.image_url   || null,
     })
+    setEditImageFile(null)
   }
-  function cancelEdit() { setEditingId(null); setEditFields({}) }
+  function cancelEdit() { setEditingId(null); setEditFields({}); setEditImageFile(null); }
 
   async function saveEdit(id) {
     setEditSaving(true)
+    let finalImageUrl = editFields.image_url
+
+    if (editImageFile) {
+      const fileExt = editImageFile.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images').upload(fileName, editImageFile)
+      if (uploadError) {
+        alert('Error uploading image: ' + uploadError.message)
+        setEditSaving(false)
+        return
+      }
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+      finalImageUrl = data.publicUrl
+    }
+
     const { error } = await supabase.from('products').update({
       name:        editFields.name,
       brand:       editFields.brand       || null,
@@ -437,6 +456,7 @@ function Admin() {
       category_id: editFields.category_id || null,
       stock:       editFields.stock ? parseInt(editFields.stock) : 0,
       allow_dealer_procurement: editFields.allow_dealer_procurement,
+      image_url:   finalImageUrl,
     }).eq('id', id)
     setEditSaving(false)
     if (error) { alert(error.message) }
@@ -914,6 +934,29 @@ function Admin() {
                             <option value="">No category</option>
                             {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                           </select>
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize:'11px' }}>Product Image</label>
+                          {editFields.image_url && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                              <img src={editFields.image_url} alt="Current" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd' }} />
+                              <span style={{ fontSize: '11px', color: '#666' }}>Current Image</span>
+                              <button 
+                                type="button"
+                                onClick={() => setEditFields(f => ({ ...f, image_url: null }))}
+                                style={{ marginLeft: 'auto', padding: '2px 6px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                              >
+                                Remove Current
+                              </button>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => setEditImageFile(e.target.files[0] || null)}
+                            style={{ width:'100%', padding:'6px', borderRadius:'6px', border:'1px dashed #ccc', background:'#f9f9f9', fontSize:'11px' }}
+                          />
                         </div>
 
                         <div style={{ display:'flex', gap:'8px', marginTop:'4px' }}>
