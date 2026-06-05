@@ -4,6 +4,7 @@ import { useCart } from './context/CartContext'
 import { supabase } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Footer from './components/Footer'
+import GiftWheelModal from './components/GiftWheelModal'
 
 const categories = [
   { id: 'pesticides', label: 'Pesticides', emoji: '🧴', path: '/category/pesticides' },
@@ -230,6 +231,9 @@ export default function App() {
   )
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
   const [showInstallGuide, setShowInstallGuide] = useState(false)
+  const [showWheelModal, setShowWheelModal] = useState(false)
+  const [isWheelEligible, setIsWheelEligible] = useState(false)
+  const [showWheelBanner, setShowWheelBanner] = useState(true)
 
   const cartItemCount = cartItems.reduce((n, i) => n + i.quantity, 0)
 
@@ -299,6 +303,60 @@ export default function App() {
       listener.subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    async function checkEligibility() {
+      const claimedLocal = localStorage.getItem('agrodeals-voucher-claimed-status') === 'true';
+      if (claimedLocal) {
+        setIsWheelEligible(false);
+        return;
+      }
+
+      if (user) {
+        try {
+          const { count: orderCount, error: orderErr } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          if (orderErr) throw orderErr;
+
+          if (orderCount && orderCount > 0) {
+            setIsWheelEligible(false);
+            return;
+          }
+
+          const { data: voucherData, error: voucherErr } = await supabase
+            .from('campaign_vouchers')
+            .select('id')
+            .eq('claimed_by_user_id', user.id)
+            .eq('campaign_name', 'first_order_wheel');
+
+          if (voucherErr) {
+            if (voucherErr.code === 'PGRST116' || voucherErr.code === '42P01') {
+              setIsWheelEligible(true);
+              return;
+            }
+            throw voucherErr;
+          }
+
+          if (voucherData && voucherData.length > 0) {
+            setIsWheelEligible(false);
+            return;
+          }
+
+          setIsWheelEligible(true);
+        } catch (err) {
+          console.warn('Error checking wheel eligibility, falling back to true:', err);
+          setIsWheelEligible(true);
+        }
+      } else {
+        setIsWheelEligible(true);
+      }
+    }
+
+    checkEligibility();
+  }, [user]);
 
   useEffect(() => {
     const t = setInterval(() => setSlide((s) => (s + 1) % heroSlides.length), 3500)
@@ -463,6 +521,25 @@ export default function App() {
       </header>
 
       <main className="page-content" style={{ paddingTop: headerH + 8 }}>
+        {/* Lucky Wheel Promo Banner */}
+        {isWheelEligible && showWheelBanner && (
+          <div className="homepage-wheel-banner">
+            <div className="homepage-wheel-banner-content">
+              <h4>🎁 Win ₹20 - ₹250 Discount!</h4>
+              <p>Spin the Lucky Gift Wheel to win a cash voucher for your very first order.</p>
+            </div>
+            <button className="homepage-wheel-banner-btn" onClick={() => setShowWheelModal(true)}>
+              SPIN WHEEL 🎡
+            </button>
+            <button 
+              onClick={() => setShowWheelBanner(false)}
+              style={{ background: 'none', border: 'none', color: '#a5d6a7', fontSize: '16px', cursor: 'pointer', padding: '0 4px 0 12px', lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Live Mandi Rates Marquee Ticker */}
         {mandiRates.length > 0 && (
           <div 
@@ -678,6 +755,30 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+      {/* Floating Lucky Wheel Launcher */}
+      {isWheelEligible && (
+        <button 
+          className="gift-wheel-launcher"
+          onClick={() => setShowWheelModal(true)}
+          aria-label="Lucky Spin Wheel"
+          title="Lucky Spin Wheel"
+        >
+          🎡
+          <span className="gift-wheel-launcher-badge"></span>
+        </button>
+      )}
+
+      {/* Lucky Wheel Modal */}
+      {showWheelModal && (
+        <GiftWheelModal 
+          user={user}
+          onClose={() => setShowWheelModal(false)}
+          onVoucherClaimed={(code, amount) => {
+            setIsWheelEligible(false);
+            setShowWheelBanner(false);
+          }}
+        />
       )}
     </div>
   )

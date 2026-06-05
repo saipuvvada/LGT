@@ -1,0 +1,396 @@
+/* ==========================================================================
+   3D Lucky Gift Wheel Styles (Green & Gold Theme)
+   ========================================================================== */
+
+/* Floating Launcher Icon */
+.gift-wheel-launcher {
+  position: fixed;
+  bottom: 86px; /* Positioned nicely above the bottom navigation bar */
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #4caf50 100%);
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.4), 
+              inset 0 -3px 0 rgba(0, 0, 0, 0.2), 
+              inset 0 3px 0 rgba(255, 255, 255, 0.3);
+  display: flex;
+  alignItems: center;
+  justifyContent: center;
+  justify-items: center;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 999;
+  border: 2px solid #ffd700;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+  animation: floatLauncher 3s ease-in-out infinite, pulseBorder 2s infinite;
+}
+
+.gift-wheel-launcher:hover {
+  transform: scale(1.1) rotate(15deg);
+  box-shadow: 0 6px 20px rgba(46, 125, 50, 0.6), 
+              inset 0 -3px 0 rgba(0, 0, 0, 0.2), 
+              inset 0 3px 0 rgba(255, 255, 255, 0.4);
+}
+
+.gift-wheel-launcher-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  background-color: #ef5350;
+  border: 2px solid white;
+  border-radius: 50%;
+  animation: pulseBadge 1.5s infinite;
+}
+
+/* Animations for Launcher */
+@keyframes floatLauncher {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulseBorder {
+  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4), 0 4px 16px rgba(46, 125, 50, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0), 0 4px 16px rgba(46, 125, 50, 0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0), 0 4px 16px rgba(46, 125, 50, 0.4); }
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Modal Overlay */
+.wheel-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 25, 15, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+  padding: 16px;
+}
+
+.wheel-modal-card {
+  background: linear-gradient(135deg, #1b3022 0%, #0d1a12 100%);
+  border: 2.5px solid #ffd700;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+              0 0 40px rgba(46, 125, 50, 0.3);
+  text-align: center;
+  color: white;
+  transform: translateY(30px);
+  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  overflow: hidden;
+}
+
+.wheel-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  z-index: 10;
+}
+
+.wheel-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* 3D Wheel Stage Container */
+.wheel-stage {
+  perspective: 1000px;
+  margin: 24px auto;
+  width: 280px;
+  height: 280px;
+  position: relative;
+}
+
+.wheel-3d-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform: rotateX(15deg); /* Slightly tilted down for 3D effect */
+  transform-style: preserve-3d;
+}
+
+/* Outer Ring (Gold Border & Bulbs) */
+.wheel-outer-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe082 0%, #ffd54f 30%, #ffc107 60%, #b58900 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5),
+              inset 0 -4px 10px rgba(0, 0, 0, 0.4),
+              inset 0 4px 10px rgba(255, 255, 255, 0.6);
+  padding: 14px;
+  position: relative;
+  transform: translateZ(0);
+}
+
+/* Blinking Bulbs */
+.bulb {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 0 6px #fff;
+  top: 50%;
+  left: 50%;
+  margin-top: -4px;
+  margin-left: -4px;
+}
+
+/* Positioning bulbs around the ring */
+.bulb:nth-child(1)  { transform: rotate(0deg) translate(130px);   animation: blinkBulbOdd 1s infinite; }
+.bulb:nth-child(2)  { transform: rotate(30deg) translate(130px);  animation: blinkBulbEven 1s infinite; }
+.bulb:nth-child(3)  { transform: rotate(60deg) translate(130px);  animation: blinkBulbOdd 1s infinite; }
+.bulb:nth-child(4)  { transform: rotate(90deg) translate(130px);  animation: blinkBulbEven 1s infinite; }
+.bulb:nth-child(5)  { transform: rotate(120deg) translate(130px); animation: blinkBulbOdd 1s infinite; }
+.bulb:nth-child(6)  { transform: rotate(150deg) translate(130px); animation: blinkBulbEven 1s infinite; }
+.bulb:nth-child(7)  { transform: rotate(180deg) translate(130px); animation: blinkBulbOdd 1s infinite; }
+.bulb:nth-child(8)  { transform: rotate(210deg) translate(130px); animation: blinkBulbEven 1s infinite; }
+.bulb:nth-child(9)  { transform: rotate(240deg) translate(130px); animation: blinkBulbOdd 1s infinite; }
+.bulb:nth-child(10) { transform: rotate(270deg) translate(130px); animation: blinkBulbEven 1s infinite; }
+.bulb:nth-child(11) { transform: rotate(300deg) translate(130px); animation: blinkBulbOdd 1s infinite; }
+.bulb:nth-child(12) { transform: rotate(330deg) translate(130px); animation: blinkBulbEven 1s infinite; }
+
+@keyframes blinkBulbOdd {
+  0%, 100% { background-color: #ffeb3b; box-shadow: 0 0 8px #ffeb3b; }
+  50% { background-color: #e57373; box-shadow: 0 0 2px #e57373; }
+}
+
+@keyframes blinkBulbEven {
+  0%, 100% { background-color: #e57373; box-shadow: 0 0 2px #e57373; }
+  50% { background-color: #00e676; box-shadow: 0 0 8px #00e676; }
+}
+
+/* Inner Spinning Wheel Canvas / Wrapper */
+.wheel-spinner-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  transform: translateZ(5px);
+  transform-style: preserve-3d;
+}
+
+/* Pointer Indicator Arrow */
+.wheel-pointer {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) translateZ(15px);
+  width: 24px;
+  height: 30px;
+  z-index: 5;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4));
+}
+
+.wheel-pointer::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 22px solid #ff3d00;
+}
+
+.wheel-pointer::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background-color: #ffd700;
+  border-radius: 50%;
+  border: 1.5px solid #d84315;
+}
+
+/* Inner Wheel Canvas */
+.wheel-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: transform 4.5s cubic-bezier(0.1, 0.8, 0.1, 1);
+}
+
+/* Wheel Center Cap (3D Hub) */
+.wheel-center-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  margin-left: -24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #e0e0e0 40%, #9e9e9e 75%, #424242 100%);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4),
+              inset 0 2px 3px rgba(255,255,255,0.8);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #1a2e22;
+  font-weight: 900;
+  border: 2.5px solid #ffd700;
+  transform: translateZ(10px);
+}
+
+/* Promo Banner on Load */
+.homepage-wheel-banner {
+  background: linear-gradient(135deg, #1b5e20 0%, #113814 100%);
+  border: 2px solid #ffd700;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 15px rgba(27, 94, 32, 0.25);
+  color: white;
+  position: relative;
+  overflow: hidden;
+  animation: bannerSlideIn 0.5s ease-out;
+}
+
+.homepage-wheel-banner-content {
+  flex: 1;
+}
+
+.homepage-wheel-banner-content h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffe082;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.homepage-wheel-banner-content p {
+  margin: 0;
+  font-size: 12px;
+  color: #e8f5e9;
+  line-height: 1.4;
+}
+
+.homepage-wheel-banner-btn {
+  background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
+  color: #1b5e20;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 179, 0, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  margin-left: 12px;
+}
+
+.homepage-wheel-banner-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(255, 179, 0, 0.6);
+}
+
+/* Modal result styles */
+.wheel-result-title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #ffd700;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  animation: popResult 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.wheel-coupon-card {
+  background: rgba(255,255,255,0.06);
+  border: 1.5px dashed rgba(255, 215, 0, 0.5);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.wheel-coupon-code {
+  font-family: monospace;
+  font-size: 20px;
+  font-weight: 900;
+  color: white;
+  background: rgba(0,0,0,0.3);
+  padding: 6px 14px;
+  border-radius: 6px;
+  letter-spacing: 1.5px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.wheel-copy-btn {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.wheel-copy-btn:hover {
+  background: #388e3c;
+}
+
+/* Generic animations */
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  to { transform: translateY(0); }
+}
+
+@keyframes bannerSlideIn {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes popResult {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
