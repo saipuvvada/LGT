@@ -51,33 +51,32 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 3. Stored procedure to seed the campaign vouchers pool (100 total: 90 low, 10 high)
--- Set with SECURITY DEFINER to execute with superuser privileges (bypassing RLS during insertion)
+-- Updated to only seed values that match the frontend slices: 
+-- Standard: ₹20, ₹50, ₹80, ₹100 | Premium: ₹120, ₹150, ₹200, ₹250
 CREATE OR REPLACE FUNCTION public.seed_first_order_wheel_campaign() 
 RETURNS VOID AS $$
 DECLARE
   i INT;
-  val NUMERIC;
-  cnt INT;
+  val INT;
+  standard_vals INT[] := ARRAY[20, 50, 80, 100];
+  premium_vals INT[] := ARRAY[120, 150, 200, 250];
 BEGIN
-  -- Count current vouchers for the campaign
-  SELECT COUNT(*) INTO cnt FROM public.campaign_vouchers WHERE campaign_name = 'first_order_wheel';
+  -- Truncate existing campaign vouchers to ensure clean matching amounts are used
+  DELETE FROM public.campaign_vouchers WHERE campaign_name = 'first_order_wheel';
   
-  -- Seed only if campaign hasn't been seeded yet
-  IF cnt = 0 THEN
-    -- Seed 90 vouchers with amounts between ₹20 and ₹100
-    FOR i IN 1..90 LOOP
-      val := floor(random() * (100 - 20 + 1) + 20);
-      INSERT INTO public.campaign_vouchers (code, amount, campaign_name) 
-      VALUES (public.generate_voucher_code('WELCOME'), val, 'first_order_wheel');
-    END LOOP;
+  -- Seed 90 vouchers with standard values [20, 50, 80, 100]
+  FOR i IN 1..90 LOOP
+    val := standard_vals[floor(random() * 4 + 1)];
+    INSERT INTO public.campaign_vouchers (code, amount, campaign_name) 
+    VALUES (public.generate_voucher_code('WELCOME'), val, 'first_order_wheel');
+  END LOOP;
 
-    -- Seed 10 vouchers with amounts between ₹101 and ₹250
-    FOR i IN 1..10 LOOP
-      val := floor(random() * (250 - 101 + 1) + 101);
-      INSERT INTO public.campaign_vouchers (code, amount, campaign_name) 
-      VALUES (public.generate_voucher_code('LUCKY'), val, 'first_order_wheel');
-    END LOOP;
-  END IF;
+  -- Seed 10 vouchers with premium values [120, 150, 200, 250]
+  FOR i IN 1..10 LOOP
+    val := premium_vals[floor(random() * 4 + 1)];
+    INSERT INTO public.campaign_vouchers (code, amount, campaign_name) 
+    VALUES (public.generate_voucher_code('LUCKY'), val, 'first_order_wheel');
+  END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -85,7 +84,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 SELECT public.seed_first_order_wheel_campaign();
 
 -- 4. Allocation database function to claim a voucher securely
--- Set with SECURITY DEFINER to bypass RLS blocks
 CREATE OR REPLACE FUNCTION public.claim_first_order_voucher(user_uuid UUID)
 RETURNS TABLE (voucher_code TEXT, voucher_amount INT) AS $$
 DECLARE
