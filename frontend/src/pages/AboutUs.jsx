@@ -154,7 +154,7 @@ const AboutUs = () => {
           </div>
           <div className="consult-badge" style={{ fontSize: '12px' }}>
             <Sparkles size={14} className="sparkle-icon" />
-            <span>Since 2020</span>
+            <span>Since 1998</span>
           </div>
         </div>
       </header>
@@ -199,7 +199,7 @@ const AboutUs = () => {
         <StatCard value={500}  suffix="+"  label="Happy Farmers Served"  icon="👨‍🌾" />
         <StatCard value={200}  suffix="+"  label="Products In Stock"      icon="📦" />
         <StatCard value={15}   suffix="%"  label="Avg Savings vs Market"  icon="💸" />
-        <StatCard value={4}    suffix="+"  label="Years of Trusted Service" icon="🏆" />
+        <StatCard value={28}    suffix="+"  label="Years of Trusted Service" icon="🏆" />
       </section>
 
       {/* ── WHO WE ARE ────────────────────────────────────────────────── */}

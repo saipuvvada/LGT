@@ -370,7 +370,7 @@ export default function App() {
       .select('*, categories(name, slug)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-      .limit(100)
+      .limit(20)
     
     if (data) setProducts(data)
   }
@@ -637,7 +637,7 @@ export default function App() {
               { emoji: '🌾', label: 'Genuine Products', back: '100% authentic agri inputs sourced directly from licensed distributors.' },
               { emoji: '🚚', label: 'COD Delivery', back: 'Cash on Delivery only. Pay when you verify the product at your doorstep.' },
               { emoji: '🔬', label: 'Expert Advisory', back: 'Free AI crop consultation and scientific dosage guidance.' },
-              { emoji: '🤝', label: '10+ Yrs Trust', back: 'Serving farmers in Karempudi & Guntur region since 2014.' },
+              { emoji: '🤝', label: '28 Years of Trust', back: 'Serving farmers in Karempudi & Guntur region since 1998.' },
             ].map((b, i) => (
               <div key={i} className="trust-badge-card">
                 <div className="trust-badge-inner">
