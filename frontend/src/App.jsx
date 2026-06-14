@@ -5,6 +5,7 @@ import { supabase } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Footer from './components/Footer'
 import GiftWheelModal from './components/GiftWheelModal'
+import { getNormalizedBrand } from './utils/brandHelper'
 
 const categories = [
   { id: 'pesticides', label: 'Pesticides', emoji: '🧴', path: '/category/pesticides' },
@@ -370,9 +371,20 @@ export default function App() {
       .select('*, categories(name, slug)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-      .limit(20)
     
-    if (data) setProducts(data)
+    if (data) {
+      const normalizedData = data.map(p => {
+        if (p.brand) {
+          const norm = getNormalizedBrand(p.brand)
+          return {
+            ...p,
+            brand: norm ? norm.name : p.brand
+          }
+        }
+        return p
+      })
+      setProducts(normalizedData)
+    }
   }
 
   async function fetchMandiRates() {
@@ -441,10 +453,13 @@ export default function App() {
     }
   }
 
-  const activeBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).map(name => ({
-    name,
-    emoji: brandEmojis[name] || '🏷️'
-  }))
+  const activeBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).map(name => {
+    const norm = getNormalizedBrand(name)
+    return {
+      name,
+      emoji: norm ? norm.emoji : '🏷️'
+    }
+  })
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = !search || 
@@ -456,6 +471,10 @@ export default function App() {
 
     return matchesSearch && matchesBrand
   })
+
+  const displayedProducts = (selectedBrand || search)
+    ? filteredProducts
+    : filteredProducts.slice(0, 20)
 
   const curr = heroSlides[slide]
 
@@ -659,18 +678,18 @@ export default function App() {
             </div>
           </div>
           
-          {filteredProducts.length === 0 ? (
+          {displayedProducts.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#888', background: '#f9f9f9', borderRadius: '10px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</div>
-              No products found matching your selection.
-            </div>
-          ) : (
-            <div className="products-grid">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} handleAdd={handleAdd} />
-              ))}
-            </div>
-          )}
+               <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</div>
+               No products found matching your selection.
+             </div>
+           ) : (
+             <div className="products-grid">
+               {displayedProducts.map((product) => (
+                 <ProductCard key={product.id} product={product} handleAdd={handleAdd} />
+               ))}
+             </div>
+           )}
         </div>
 
         {activeBrands.length > 0 && (

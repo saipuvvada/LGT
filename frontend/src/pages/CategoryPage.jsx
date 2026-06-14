@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import BottomNav from '../components/BottomNav'
+import { getNormalizedBrand } from '../utils/brandHelper'
 
 const categoryMeta = {
   pesticides: { label: 'Pesticides', emoji: '🧴', desc: 'Insecticides, Fungicides, Herbicides & more' },
@@ -48,10 +49,14 @@ export default function CategoryPage() {
       
       if (prodData) {
         // Add fake original price for UI
-        const mappedData = prodData.map(p => ({
-          ...p,
-          originalPrice: Math.round(p.price * 1.3)
-        }))
+        const mappedData = prodData.map(p => {
+          const norm = p.brand ? getNormalizedBrand(p.brand) : null
+          return {
+            ...p,
+            originalPrice: Math.round(p.price * 1.3),
+            brand: norm ? norm.name : p.brand
+          }
+        })
         setProducts(mappedData)
       }
     } else {

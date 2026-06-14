@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
+import { getNormalizedBrand } from '../utils/brandHelper'
 
 function Admin() {
   const [products, setProducts]       = useState([])
@@ -376,9 +377,11 @@ function Admin() {
       image_url = data.publicUrl
     }
 
+    const normBrand = brand ? (getNormalizedBrand(brand)?.name || brand.trim()) : null
+
     const { error } = await supabase.from('products').insert([{
       name,
-      brand: brand || null,
+      brand: normBrand,
       price: parseFloat(price),
       category_id: categoryId || null,
       image_url,
@@ -446,9 +449,11 @@ function Admin() {
       finalImageUrl = data.publicUrl
     }
 
+    const normBrand = editFields.brand ? (getNormalizedBrand(editFields.brand)?.name || editFields.brand.trim()) : null
+
     const { error } = await supabase.from('products').update({
       name:        editFields.name,
-      brand:       editFields.brand       || null,
+      brand:       normBrand,
       price:       parseFloat(editFields.price),
       hsn_code:    editFields.hsn_code    || null,
       quantity:    editFields.quantity    || null,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
+import { getNormalizedBrand } from '../utils/brandHelper'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -38,7 +39,12 @@ export default function ProductDetail() {
       return
     }
 
-    setProduct(data)
+    const norm = data.brand ? getNormalizedBrand(data.brand) : null
+    const normalizedProduct = {
+      ...data,
+      brand: norm ? norm.name : data.brand
+    }
+    setProduct(normalizedProduct)
 
     // Fetch similar products from same category
     if (data.category_id) {
@@ -50,7 +56,14 @@ export default function ProductDetail() {
         .neq('id', id)
         .limit(8)
 
-      setSimilar(sim || [])
+      const normalizedSim = (sim || []).map(s => {
+        const simNorm = s.brand ? getNormalizedBrand(s.brand) : null
+        return {
+          ...s,
+          brand: simNorm ? simNorm.name : s.brand
+        }
+      })
+      setSimilar(normalizedSim)
     }
     setLoading(false)
   }
