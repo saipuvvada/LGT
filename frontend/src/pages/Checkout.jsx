@@ -27,10 +27,75 @@ export default function Checkout() {
   const [walletBalance, setWalletBalance] = useState(0)
   const [useWallet, setUseWallet] = useState(false)
 
+  // Salesperson states
+  const [referralCode, setReferralCode] = useState('')
+  const [salesPerson, setSalesPerson] = useState(null)
+  const [verifyingCode, setVerifyingCode] = useState(false)
+  const [codeMessage, setCodeMessage] = useState({ text: '', isError: false })
+
   useEffect(() => {
     fetchPastOrders()
     fetchWalletBalance()
+
+    // Auto-apply stored referral code from sessionStorage if present
+    const storedCode = sessionStorage.getItem('sales_referral_code')
+    if (storedCode) {
+      setReferralCode(storedCode)
+      autoVerifyCode(storedCode)
+    }
   }, [])
+
+  const autoVerifyCode = async (code) => {
+    setVerifyingCode(true)
+    try {
+      const { data, error } = await supabase
+        .from('sales_persons')
+        .select('*')
+        .eq('referral_code', code.trim())
+        .maybeSingle()
+      if (!error && data) {
+        setSalesPerson(data)
+        setCodeMessage({ text: `✅ Referral Applied: ${data.name} (${data.sales_person_id})`, isError: false })
+      }
+    } catch (e) {
+      console.warn('Auto-verification of referral code failed:', e)
+    } finally {
+      setVerifyingCode(false)
+    }
+  }
+
+  const verifyReferralCode = async (codeToVerify) => {
+    const code = (codeToVerify || referralCode).trim()
+    if (!code) {
+      setCodeMessage({ text: 'Please enter a code to verify.', isError: true })
+      return
+    }
+
+    setVerifyingCode(true)
+    setCodeMessage({ text: '', isError: false })
+    try {
+      const { data, error } = await supabase
+        .from('sales_persons')
+        .select('*')
+        .eq('referral_code', code)
+        .maybeSingle()
+
+      if (error) throw error
+
+      if (data) {
+        setSalesPerson(data)
+        setCodeMessage({ text: `✅ Code Applied: ${data.name} (${data.sales_person_id})`, isError: false })
+      } else {
+        setSalesPerson(null)
+        setCodeMessage({ text: '❌ Invalid referral code.', isError: true })
+      }
+    } catch (err) {
+      console.error('Error verifying referral code:', err)
+      setCodeMessage({ text: '⚠️ Verification failed. Please try again.', isError: true })
+    } finally {
+      setVerifyingCode(false)
+    }
+  }
 
   const fetchWalletBalance = async () => {
     try {
@@ -123,6 +188,43 @@ export default function Checkout() {
 
       const transactionId = 'COD-' + Date.now()
 
+      // 1.5. Validate all product IDs exist in the products table first and fetch their categories
+      const cartProductIds = cartItems.map(i => i.id)
+      const { data: validProducts, error: valError } = await supabase
+        .from('products')
+        .select('id, category_id, categories(name, slug)')
+        .in('id', cartProductIds)
+
+      if (valError) throw valError
+
+      const validIds = new Set(validProducts?.map(p => p.id) || [])
+      const invalidItems = cartItems.filter(i => !validIds.has(i.id))
+
+      if (invalidItems.length > 0) {
+        alert(`Some items in your cart are no longer available and have been removed:\n${invalidItems.map(i => i.name).join(', ')}\n\nPlease review your cart and try again.`)
+        setLoading(false)
+        return
+      }
+
+      // Calculate commission pre-GST
+      const categoryMap = {}
+      validProducts?.forEach(p => {
+        categoryMap[p.id] = p.categories?.slug || ''
+      })
+
+      let calculatedCommission = 0
+      cartItems.forEach(item => {
+        const slug = categoryMap[item.id] || ''
+        let commissionRate = 0
+        if (slug === 'pesticides') {
+          commissionRate = 0.01 // 1%
+        } else if (slug === 'bio-products') {
+          commissionRate = 0.03 // 3%
+        }
+        calculatedCommission += item.price * item.quantity * commissionRate
+      })
+      calculatedCommission = parseFloat(calculatedCommission.toFixed(2))
+
       // 2. Create the Order
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -139,7 +241,9 @@ export default function Checkout() {
           previous_order_id: isLoyaltyValid ? loyaltyData.previousOrderId : null,
           land_acres: isLoyaltyValid ? parseFloat(loyaltyData.landAcres) : null,
           crop_type: isLoyaltyValid ? loyaltyData.cropType : null,
-          previous_medicines_used: isLoyaltyValid ? loyaltyData.medicinesUsed : null
+          previous_medicines_used: isLoyaltyValid ? loyaltyData.medicinesUsed : null,
+          sales_person_id: salesPerson ? salesPerson.id : null,
+          sales_person_commission: salesPerson ? calculatedCommission : 0
         }])
         .select()
         .single()
@@ -147,24 +251,6 @@ export default function Checkout() {
       if (orderError) throw orderError
 
       // 3. Create Order Items
-      console.log(JSON.stringify(cartItems, null, 2))
-
-      // Validate all product IDs exist in the products table first
-      const cartProductIds = cartItems.map(i => i.id)
-      const { data: validProducts } = await supabase
-        .from('products')
-        .select('id')
-        .in('id', cartProductIds)
-
-      const validIds = new Set(validProducts?.map(p => p.id) || [])
-      const invalidItems = cartItems.filter(i => !validIds.has(i.id))
-
-      if (invalidItems.length > 0) {
-        alert(`Some items in your cart are no longer available and have been removed:\n${invalidItems.map(i => i.name).join(', ')}\n\nPlease review your cart and try again.`)
-        setLoading(false)
-        return
-      }
-
       const orderItems = cartItems.map((item) => ({
         order_id: order.id,
         product_id: item.id,
@@ -179,6 +265,18 @@ export default function Checkout() {
         .insert(orderItems)
 
       if (itemsError) throw itemsError
+
+      // Update salesperson total commission in database
+      if (salesPerson && calculatedCommission > 0) {
+        const newTotalCommission = parseFloat((parseFloat(salesPerson.commission_earned || 0) + calculatedCommission).toFixed(2))
+        const { error: spUpdateErr } = await supabase
+          .from('sales_persons')
+          .update({ commission_earned: newTotalCommission })
+          .eq('id', salesPerson.id)
+        if (spUpdateErr) {
+          console.warn('Error updating salesperson commission (non-blocking):', spUpdateErr)
+        }
+      }
 
       // Deduct used wallet balance
       if (walletDiscountApplied > 0) {
@@ -205,6 +303,15 @@ export default function Checkout() {
           `• Medicines Used:  ${loyaltyData.medicinesUsed}\n\n`
         : '';
 
+      const salespersonDetailsText = salesPerson
+        ? `💼 SALESPERSON REFERRAL\n` +
+          `───────────────────────────────\n` +
+          `• Name:            ${salesPerson.name}\n` +
+          `• Salesperson ID:  ${salesPerson.sales_person_id}\n` +
+          `• Referral Code:   ${salesPerson.referral_code}\n` +
+          `• Commission:      ₹${calculatedCommission.toFixed(2)}\n\n`
+        : ''
+
       const emailBody =
         `📦 NEW ORDER RECEIVED — ${invoiceNo}\n` +
         `══════════════════════════════════\n\n` +
@@ -214,6 +321,7 @@ export default function Checkout() {
         `💳 Payment:  Cash on Delivery (COD)\n` +
         `🔖 Transaction ID: ${transactionId}\n\n` +
         loyaltyDetailsText +
+        salespersonDetailsText +
         `─── ORDER ITEMS ───────────────────\n` +
         `${itemLines}\n\n` +
         `─── TOTALS ────────────────────────\n` +
@@ -254,6 +362,9 @@ export default function Checkout() {
             Land_Acres:    isLoyaltyValid ? `${loyaltyData.landAcres} Acres` : 'N/A',
             Crop_Type:     isLoyaltyValid ? loyaltyData.cropType : 'N/A',
             Previous_Medicines: isLoyaltyValid ? loyaltyData.medicinesUsed : 'N/A',
+            Salesperson_Name: salesPerson ? salesPerson.name : 'N/A',
+            Salesperson_ID: salesPerson ? salesPerson.sales_person_id : 'N/A',
+            Salesperson_Commission: salesPerson ? `₹${calculatedCommission.toFixed(2)}` : '₹0.00',
             Full_Details:  emailBody,
             _honey:        '',
             _template:     'box',
@@ -274,6 +385,8 @@ export default function Checkout() {
           items: itemsWithGst,
           totals: { subtotal, cgst, sgst, totalGst, grandTotal, loyaltyDiscount, walletDiscountApplied },
           emailSent,
+          salesPerson,
+          salesPersonCommission: salesPerson ? calculatedCommission : 0
         }
       })
 
@@ -320,6 +433,66 @@ export default function Checkout() {
               <input required name="pincode" placeholder="PIN Code" value={formData.pincode} onChange={handleChange} style={{ ...inputStyle, flex: 1 }} />
             </div>
           </form>
+        </div>
+
+        {/* Salesperson Referral Section */}
+        <div style={{ 
+          background: 'white', 
+          padding: 20, 
+          borderRadius: 12, 
+          marginBottom: 20, 
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          border: salesPerson ? '1.5px solid #a7f3d0' : '1px solid #eee'
+        }}>
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: '16px' }}>
+            💼 Salesperson Referral
+          </h3>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 1.4 }}>
+            Did one of our sales representatives guide you? Enter their referral code below.
+          </p>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input 
+              placeholder="Enter Referral Code (e.g. SRIN3210)" 
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+              disabled={verifyingCode}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <button 
+              type="button"
+              onClick={() => verifyReferralCode()}
+              disabled={verifyingCode || !referralCode.trim()}
+              style={{
+                padding: '0 20px',
+                background: verifyingCode ? '#ccc' : '#2d7a4f',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: verifyingCode || !referralCode.trim() ? 'not-allowed' : 'pointer',
+                transition: 'background 0.2s',
+                fontSize: '14.5px'
+              }}
+            >
+              {verifyingCode ? 'Verifying...' : 'Verify'}
+            </button>
+          </div>
+
+          {codeMessage.text && (
+            <div style={{ 
+              marginTop: 12, 
+              fontSize: '13px', 
+              fontWeight: '600',
+              color: codeMessage.isError ? '#d32f2f' : '#2e7d32',
+              background: codeMessage.isError ? '#ffebee' : '#e8f5e9',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: codeMessage.isError ? '1px solid #ffcdd2' : '1px solid #c8e6c9'
+            }}>
+              {codeMessage.text}
+            </div>
+          )}
         </div>
 
         {/* AgroDeals Wallet Section */}

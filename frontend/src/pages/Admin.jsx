@@ -44,6 +44,14 @@ function Admin() {
   const [orderStatusFilter, setOrderStatusFilter] = useState('all')
   const [customerSearch, setCustomerSearch] = useState('')
 
+  // ── Salesperson states ───────────────────────────────────────────
+  const [salesPersons, setSalesPersons] = useState([])
+  const [loadingSalesPersons, setLoadingSalesPersons] = useState(false)
+  const [spName, setSpName] = useState('')
+  const [spPhone, setSpPhone] = useState('')
+  const [spSearch, setSpSearch] = useState('')
+  const [spSaving, setSpSaving] = useState(false)
+
   // ── Mandi form state ───────────────────────────────────────────
   const [mandiItems, setMandiItems] = useState([])
   const [mandiCrop, setMandiCrop] = useState('')
@@ -106,6 +114,9 @@ function Admin() {
         fetchCustomers()
       } else if (activeTab === 'mandi') {
         fetchMandiRates()
+      } else if (activeTab === 'salespersons') {
+        fetchSalesPersons()
+        fetchOrders()
       }
     }
   }, [isAuthorized, activeTab])
@@ -116,6 +127,11 @@ function Admin() {
       .from('orders')
       .select(`
         *,
+        sales_persons (
+          name,
+          sales_person_id,
+          referral_code
+        ),
         order_items (
           id,
           quantity,
@@ -136,6 +152,75 @@ function Admin() {
       console.error('Error fetching orders:', error)
     }
     setLoadingOrders(false)
+  }
+
+  async function fetchSalesPersons() {
+    setLoadingSalesPersons(true)
+    const { data, error } = await supabase
+      .from('sales_persons')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error && data) {
+      setSalesPersons(data)
+    } else if (error) {
+      console.error('Error fetching salespersons:', error)
+    }
+    setLoadingSalesPersons(false)
+  }
+
+  async function addSalesPerson(e) {
+    e.preventDefault()
+    if (!spName || !spPhone) return alert('Name and phone number are required')
+    setSpSaving(true)
+
+    // Generate Sales Person ID: SP + random 4-digit number
+    const randId = Math.floor(1000 + Math.random() * 9000).toString()
+    const generatedId = `SP${randId}`
+
+    // Generate Referral Code: Uppercase initials (up to 4 chars) + last 4 digits of phone
+    const cleanName = spName.trim().toUpperCase().replace(/[^A-Z]/g, '')
+    const prefix = cleanName.substring(0, 4) || 'SP'
+    const cleanPhone = spPhone.trim().replace(/[^0-9]/g, '')
+    const suffix = cleanPhone.substring(cleanPhone.length - 4) || Math.floor(1000 + Math.random() * 9000).toString()
+    const generatedReferral = `${prefix}${suffix}`
+
+    try {
+      const { error } = await supabase
+        .from('sales_persons')
+        .insert([{
+          sales_person_id: generatedId,
+          name: spName.trim(),
+          phone: spPhone.trim(),
+          referral_code: generatedReferral,
+          commission_earned: 0.00
+        }])
+
+      if (error) {
+        throw error
+      }
+
+      alert(`✅ Salesperson registered successfully!\nID: ${generatedId}\nReferral Code: ${generatedReferral}`)
+      setSpName('')
+      setSpPhone('')
+      fetchSalesPersons()
+    } catch (err) {
+      alert('Error registering salesperson: ' + err.message)
+    } finally {
+      setSpSaving(false)
+    }
+  }
+
+  async function deleteSalesPerson(id) {
+    if (!window.confirm('Are you sure you want to remove this salesperson?')) return
+    const { error } = await supabase
+      .from('sales_persons')
+      .delete()
+      .eq('id', id)
+    if (!error) {
+      fetchSalesPersons()
+    } else {
+      alert('Error deleting salesperson: ' + error.message)
+    }
   }
 
   async function fetchCustomers() {
@@ -596,6 +681,12 @@ function Admin() {
           onClick={() => setActiveTab('mandi')}
         >
           📈 Mandi Rates Manager
+        </button>
+        <button 
+          className={`admin-tab-btn ${activeTab === 'salespersons' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('salespersons')}
+        >
+          💼 Salespersons
         </button>
       </div>
 
@@ -1162,6 +1253,12 @@ function Admin() {
                                   <span>-₹{parseFloat(order.loyalty_discount_applied).toFixed(2)}</span>
                                 </div>
                               )}
+                              {order.sales_persons && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#1d4ed8', fontWeight: 'bold' }}>
+                                  <span>Assisted by (Commission):</span>
+                                  <span>{order.sales_persons.name} (+₹{parseFloat(order.sales_person_commission || 0).toFixed(2)})</span>
+                                </div>
+                              )}
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 900, color: 'var(--green-primary)' }}>
                                   <span>Total Collected (COD):</span>
                                   <span>₹{parseFloat(order.total_price).toFixed(2)}</span>
@@ -1180,6 +1277,20 @@ function Admin() {
                               <span>• <b>Crop Cultivated:</b> {order.crop_type}</span>
                               <span>• <b>Previously Sourced Medicines:</b> {order.previous_medicines_used}</span>
                               <span>• <b>Previous Reference Invoice:</b> {order.previous_order_id ? String(order.previous_order_id).substring(0,8).toUpperCase() : 'Manual Sourcing'}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {order.sales_persons && (
+                          <div style={{ background: '#eff6ff', border: '1px dashed #bfdbfe', padding: '12px 16px', borderRadius: '8px', fontSize: '12px', marginTop: '12px' }}>
+                            <div style={{ color: '#1e40af', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+                              💼 Salesperson Referral Details:
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', color: '#444' }}>
+                              <span>• <b>Name:</b> {order.sales_persons.name}</span>
+                              <span>• <b>Salesperson ID:</b> {order.sales_persons.sales_person_id}</span>
+                              <span>• <b>Referral Code:</b> {order.sales_persons.referral_code}</span>
+                              <span>• <b>Commission Calculated:</b> ₹{parseFloat(order.sales_person_commission || 0).toFixed(2)}</span>
                             </div>
                           </div>
                         )}
@@ -1620,6 +1731,208 @@ function Admin() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── SALESPERSONS TAB CONTENT ─────────────────────────── */}
+      {activeTab === 'salespersons' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Analytics Summary */}
+          {(() => {
+            const totalEarned = salesPersons.reduce((sum, sp) => sum + parseFloat(sp.commission_earned || 0), 0)
+            const referredOrders = orders.filter(o => o.sales_person_id !== null)
+            const activeReferrals = referredOrders.length
+            
+            // Calculate top agent
+            let topAgent = 'None'
+            let maxCommission = 0
+            salesPersons.forEach(sp => {
+              const comm = parseFloat(sp.commission_earned || 0)
+              if (comm > maxCommission) {
+                maxCommission = comm
+                topAgent = `${sp.name} (${sp.sales_person_id})`
+              }
+            })
+
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>👥</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Agents</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#1e293b', marginTop: '4px' }}>{salesPersons.length}</div>
+                </div>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>💸</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Payouts</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--green-primary)', marginTop: '4px' }}>₹{totalEarned.toFixed(2)}</div>
+                </div>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Referred Orders</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#1e293b', marginTop: '4px' }}>{activeReferrals}</div>
+                </div>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏆</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Top Performer</div>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginTop: '10px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{topAgent}</div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Add Salesperson Form */}
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: '17px', fontWeight: 800 }}>➕ Register New Salesperson</h2>
+            <form onSubmit={addSalesPerson} style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={labelStyle}>Full Name *</label>
+                <input 
+                  type="text" 
+                  value={spName} 
+                  onChange={e => setSpName(e.target.value)} 
+                  placeholder="e.g. Srinivas Rao" 
+                  style={inputStyle} 
+                  required 
+                />
+              </div>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={labelStyle}>Mobile Number *</label>
+                <input 
+                  type="tel" 
+                  value={spPhone} 
+                  onChange={e => setSpPhone(e.target.value)} 
+                  placeholder="e.g. 9876543210" 
+                  style={inputStyle} 
+                  required 
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={spSaving} 
+                style={{
+                  padding: '12px 24px', 
+                  background: spSaving ? '#aaa' : '#2d7a4f', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  cursor: spSaving ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold', 
+                  fontSize: '14px',
+                  height: '42px'
+                }}
+              >
+                {spSaving ? 'Registering...' : 'Register Agent'}
+              </button>
+            </form>
+          </div>
+
+          {/* Salesperson Directory */}
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: 800 }}>💼 Salespersons Directory</h2>
+                <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>List of registered sales representatives, referral codes, and earnings.</p>
+              </div>
+              <div style={{ width: '250px' }}>
+                <input 
+                  type="text" 
+                  placeholder="🔍 Search by Name, Code, Phone..." 
+                  value={spSearch} 
+                  onChange={e => setSpSearch(e.target.value)} 
+                  style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px' }}
+                />
+              </div>
+            </div>
+
+            {loadingSalesPersons ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>⏳ Loading salespersons list...</div>
+            ) : (
+              (() => {
+                const query = spSearch.toLowerCase().trim()
+                const filteredSalespersons = salesPersons.filter(sp => {
+                  return !query || 
+                    sp.name?.toLowerCase().includes(query) ||
+                    sp.sales_person_id?.toLowerCase().includes(query) ||
+                    sp.referral_code?.toLowerCase().includes(query) ||
+                    sp.phone?.includes(query)
+                })
+
+                if (filteredSalespersons.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                      🔍 No salespersons found matching "{spSearch}".
+                    </div>
+                  )
+                }
+
+                return (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Agent Name</th>
+                          <th>Agent ID</th>
+                          <th>Mobile Number</th>
+                          <th>Referral Code</th>
+                          <th style={{ textAlign: 'center' }}>Total Referrals</th>
+                          <th style={{ textAlign: 'right' }}>Commission Earned (₹)</th>
+                          <th style={{ textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSalespersons.map(sp => {
+                          const referralsCount = orders.filter(o => o.sales_person_id === sp.id).length
+                          return (
+                            <tr key={sp.id}>
+                              <td style={{ fontWeight: 600 }}>{sp.name}</td>
+                              <td style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#475569' }}>{sp.sales_person_id}</td>
+                              <td>{sp.phone}</td>
+                              <td>
+                                <span style={{ 
+                                  padding: '4px 10px', 
+                                  borderRadius: '6px', 
+                                  background: '#f0fdf4', 
+                                  color: '#166534', 
+                                  fontWeight: 'bold', 
+                                  border: '1px solid #bbf7d0',
+                                  fontFamily: 'monospace'
+                                }}>
+                                  {sp.referral_code}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{referralsCount}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--green-primary)' }}>
+                                ₹{parseFloat(sp.commission_earned || 0).toFixed(2)}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <button 
+                                  onClick={() => deleteSalesPerson(sp.id)}
+                                  style={{
+                                    padding: '4px 8px',
+                                    background: '#fee2e2',
+                                    color: '#ef4444',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    fontSize: '11px'
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()
+            )}
+          </div>
+
+        </div>
       )}
     </div>
   )

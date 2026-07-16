@@ -27,7 +27,7 @@ export default function OrderSuccess() {
     )
   }
 
-  const { orderId, customerDetails, items, totals, emailSent } = state
+  const { orderId, customerDetails, items, totals, emailSent, salesPerson, salesPersonCommission } = state
   const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   const downloadInvoice = () => {
@@ -73,6 +73,19 @@ export default function OrderSuccess() {
         <p style={{ color: '#666', textAlign: 'center', marginBottom: 16, maxWidth: '400px', lineHeight: '1.5' }}>
           Thank you for shopping with Lakshmi Ganapathi Traders. Your order will be delivered soon via Cash on Delivery.
         </p>
+
+        {salesPerson && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            background: '#ecfdf5', border: '1.5px solid #a7f3d0',
+            borderRadius: '10px', padding: '10px 14px',
+            marginBottom: '20px', maxWidth: '420px', width: '100%', fontSize: '13px',
+            color: '#047857', fontWeight: 'bold'
+          }}>
+            <span style={{ fontSize: '18px' }}>👤</span>
+            <span>Assisted by: {salesPerson.name} ({salesPerson.sales_person_id})</span>
+          </div>
+        )}
 
         {/* Email dispatch status */}
         {emailSent ? (

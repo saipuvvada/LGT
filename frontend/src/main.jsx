@@ -25,6 +25,18 @@ import MandiRates from './pages/MandiRates'
 import { CartProvider } from './context/CartContext'
 import ProtectedRoute from './components/ProtectedRoute'
 
+// Capture salesperson referral code globally from query string on initial load
+try {
+  const urlParams = new URLSearchParams(window.location.search)
+  const refCode = urlParams.get('ref')
+  if (refCode) {
+    sessionStorage.setItem('sales_referral_code', refCode.trim())
+    console.log('Global: Captured and stored salesperson referral code:', refCode.trim())
+  }
+} catch (e) {
+  console.error('Error capturing referral code:', e)
+}
+
 ReactDOM.createRoot(
   document.getElementById('root')
 ).render(
