@@ -185,19 +185,17 @@ export default function OrderSuccess() {
                   <th style={th('center', 56)}>HSN Code</th>
                   <th style={th('center', 38)}>Qty</th>
                   <th style={th('right',  60)}>Rate (₹)</th>
-                  <th style={th('center', 42)}>GST%</th>
-                  <th style={th('right',  60)}>GST (₹)</th>
+                  <th style={th('center', 50)}>GST%</th>
                   <th style={th('right',  70)}>Amount (₹)</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => {
                   const base    = item.price * item.quantity
-                  const gstAmt  = item.gstAmount ?? parseFloat((base * (item.gstRate ?? 18) / 100).toFixed(2))
-                  const total   = parseFloat((base + gstAmt).toFixed(2))
+                  const total   = parseFloat(base.toFixed(2))
                   const isEven  = index % 2 === 0
                   return (
-                    <tr key={item.id} style={{ backgroundColor: isEven ? '#ffffff' : '#f7fdf9', borderBottom: '1px solid #e0e0e0' }}>
+                    <tr key={item.id || index} style={{ backgroundColor: isEven ? '#ffffff' : '#f7fdf9', borderBottom: '1px solid #e0e0e0' }}>
                       <td style={td('center')}>{index + 1}</td>
                       <td style={td('left')}>
                         <div style={{ fontWeight: 600 }}>{item.name}</div>
@@ -210,7 +208,6 @@ export default function OrderSuccess() {
                       <td style={td('center')}>{item.quantity}</td>
                       <td style={td('right')}>{item.price.toFixed(2)}</td>
                       <td style={td('center')}>{item.gstRate ?? item.gst_rate ?? 18}%</td>
-                      <td style={td('right')}>{gstAmt.toFixed(2)}</td>
                       <td style={{ ...td('right'), fontWeight: 600 }}>{total.toFixed(2)}</td>
                     </tr>
                   )
@@ -220,20 +217,12 @@ export default function OrderSuccess() {
 
             {/* ── Totals ── */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 32 }}>
-              <div style={{ width: 260, fontSize: 11 }}>
-                <Row label="Subtotal (excl. GST)" value={`₹${totals.subtotal.toFixed(2)}`} />
-                {(() => {
-                  const effRate = totals.subtotal > 0
-                    ? ((totals.totalGst / totals.subtotal) * 100).toFixed(0)
-                    : 18
-                  const halfRate = (Number(effRate) / 2).toFixed(1)
-                  return (
-                    <>
-                      <Row label={`CGST (${halfRate}%)`} value={`₹${totals.cgst.toFixed(2)}`} />
-                      <Row label={`SGST (${halfRate}%)`} value={`₹${totals.sgst.toFixed(2)}`} />
-                    </>
-                  )
-                })()}
+              <div style={{ width: 270, fontSize: 11 }}>
+                <Row label="Subtotal (Incl. GST)" value={`₹${totals.subtotal.toFixed(2)}`} />
+                <Row 
+                  label="GST Rate" 
+                  value={`${totals.gstRatesStr || Array.from(new Set(items.map(i => `${i.gstRate ?? i.gst_rate ?? 18}%`))).join(', ')} (Incl. in price)`} 
+                />
                 {totals.loyaltyDiscount > 0 && (
                   <Row label="Loyalty Discount (10% Off)" value={`-₹${totals.loyaltyDiscount.toFixed(2)}`} />
                 )}
@@ -245,7 +234,7 @@ export default function OrderSuccess() {
                   <span>₹{totals.grandTotal.toFixed(2)}</span>
                 </div>
                 <div style={{ textAlign: 'right', marginTop: 4, fontSize: 9, color: '#888' }}>
-                  Total Items: {items.reduce((s, i) => s + i.quantity, 0)} | GST Inclusive Amount
+                  Total Items: {items.reduce((s, i) => s + i.quantity, 0)} | All prices are inclusive of GST
                 </div>
               </div>
             </div>

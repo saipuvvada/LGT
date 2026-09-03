@@ -133,18 +133,14 @@ export default function Checkout() {
     }
   }
 
-  // Per-item GST calculation using each product's gst_rate field
+  // Per-item GST rate association (prices already include GST)
   const itemsWithGst = cartItems.map(item => {
     const rate = item.gst_rate ?? 18  // fallback to 18% if not set
     const basePrice = item.price * item.quantity
-    const gstAmt = parseFloat((basePrice * rate / 100).toFixed(2))
-    return { ...item, gstRate: rate, gstAmount: gstAmt, baseAmount: basePrice }
+    return { ...item, gstRate: rate, baseAmount: basePrice }
   })
   const subtotal = parseFloat(cartItems.reduce((s, i) => s + i.price * i.quantity, 0).toFixed(2))
-  const totalGst = parseFloat(itemsWithGst.reduce((s, i) => s + i.gstAmount, 0).toFixed(2))
-  const cgst = parseFloat((totalGst / 2).toFixed(2))
-  const sgst = parseFloat((totalGst / 2).toFixed(2))
-  const baseTotal = parseFloat((subtotal + totalGst).toFixed(2))
+  const baseTotal = subtotal
 
   const isLoyaltyValid = applyLoyalty && 
     loyaltyData.previousOrderId && 
@@ -290,8 +286,9 @@ export default function Checkout() {
 
       // 4. Fire invoice email to saipuvvada12@gmail.com via FormSubmit
       const invoiceNo = `INV-${order.id.substring(0, 8).toUpperCase()}`
+      const gstRatesStr = Array.from(new Set(itemsWithGst.map(i => `${i.gstRate}%`))).join(', ') || '18%'
       const itemLines = itemsWithGst.map((item, i) =>
-        `${i + 1}. ${item.name} (${item.quantity_vol || ''}) x${item.quantity} @ ₹${item.price.toFixed(2)} + GST ₹${item.gstAmount.toFixed(2)} = ₹${(item.price * item.quantity + item.gstAmount).toFixed(2)}`
+        `${i + 1}. ${item.name} (${item.quantity_vol || ''}) x${item.quantity} @ ₹${item.price.toFixed(2)} [GST ${item.gstRate}%] = ₹${(item.price * item.quantity).toFixed(2)}`
       ).join('\n')
 
       const loyaltyDetailsText = isLoyaltyValid
@@ -325,9 +322,8 @@ export default function Checkout() {
         `─── ORDER ITEMS ───────────────────\n` +
         `${itemLines}\n\n` +
         `─── TOTALS ────────────────────────\n` +
-        `Subtotal (excl. GST): ₹${subtotal.toFixed(2)}\n` +
-        `CGST:                 ₹${cgst.toFixed(2)}\n` +
-        `SGST:                 ₹${sgst.toFixed(2)}\n` +
+        `Subtotal (Incl. GST): ₹${subtotal.toFixed(2)}\n` +
+        `GST Rate:             ${gstRatesStr} (Included in price)\n` +
         (loyaltyDiscount > 0 ? `Loyalty Discount (10%): -₹${loyaltyDiscount.toFixed(2)}\n` : '') +
         (walletDiscountApplied > 0 ? `Wallet Discount:      -₹${walletDiscountApplied.toFixed(2)}\n` : '') +
         `Grand Total (COD):    ₹${grandTotal.toFixed(2)}\n\n` +
@@ -352,9 +348,8 @@ export default function Checkout() {
             Payment:       'Cash on Delivery (COD)',
             Transaction_ID: transactionId,
             Order_Items:   itemLines,
-            Subtotal:      `₹${subtotal.toFixed(2)}`,
-            CGST:          `₹${cgst.toFixed(2)}`,
-            SGST:          `₹${sgst.toFixed(2)}`,
+            Subtotal:      `₹${subtotal.toFixed(2)} (Incl. GST)`,
+            GST_Rate:      `${gstRatesStr} (Included in price)`,
             Loyalty_Discount: loyaltyDiscount > 0 ? `-₹${loyaltyDiscount.toFixed(2)}` : '₹0.00',
             Wallet_Discount: walletDiscountApplied > 0 ? `-₹${walletDiscountApplied.toFixed(2)}` : '₹0.00',
             Grand_Total:   `₹${grandTotal.toFixed(2)}`,
@@ -383,7 +378,7 @@ export default function Checkout() {
           orderId: order.id,
           customerDetails: formData,
           items: itemsWithGst,
-          totals: { subtotal, cgst, sgst, totalGst, grandTotal, loyaltyDiscount, walletDiscountApplied },
+          totals: { subtotal, grandTotal, loyaltyDiscount, walletDiscountApplied, gstRatesStr },
           emailSent,
           salesPerson,
           salesPersonCommission: salesPerson ? calculatedCommission : 0
@@ -649,16 +644,14 @@ export default function Checkout() {
           <h3 style={{ marginBottom: 16 }}>Order Summary</h3>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#666' }}>
-            <span>Items ({cartItems.length})</span>
+            <span>Subtotal (Incl. GST)</span>
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#666' }}>
-            <span>CGST</span>
-            <span>₹{cgst.toFixed(2)}</span>
-          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, color: '#666', borderBottom: '1px solid #eee', paddingBottom: 12 }}>
-            <span>SGST</span>
-            <span>₹{sgst.toFixed(2)}</span>
+            <span>GST Rate</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#2d7a4f' }}>
+              {Array.from(new Set(itemsWithGst.map(i => `${i.gstRate}%`))).join(', ')} (Included in price)
+            </span>
           </div>
 
           {loyaltyDiscount > 0 && (
